@@ -1,0 +1,31 @@
+# Node.js
+node_modules/
+.env
+app.log
+
+# TypeScript
+/dist/
+/*.tsbuildinfo
+
+# Logs
+*.log
+
+
+.DS_Store
+
+# Editor folders
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
+
+# Swap files
+*.swp
+*.swo
+
+# Logs directory
+logs/
+
+# Misc
+package-lock.json
