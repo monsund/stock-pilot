@@ -1,0 +1,28 @@
+{
+  "name": "agent-news-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && node --enable-source-maps dist/index.js",
+    "dev:watch": "nodemon --watch src --ignore dist --exec \"npm run build && node dist/index.js\"",
+    "start": "node --enable-source-maps dist/index.js",
+    "build": "tsc -p .",
+    "ask": "npm run build && node dist/devCli.js \"Tata Motors\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "lru-cache": "^11.0.1",
+    "ollama": "^0.5.7",
+    "pino": "^9.3.2",
+    "yahoo-finance2": "^2.12.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "latest",
+    "nodemon": "^3.1.10",
+    "ts-node": "latest",
+    "typescript": "^5.6.2"
+  }
+}
