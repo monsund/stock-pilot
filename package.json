@@ -1,0 +1,13 @@
+{
+  "name": "stockpilot",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm -w apps/slm-agent run build && npm -w apps/frontend run build",
+    "dev:frontend": "npm -w apps/frontend run dev",
+    "dev:agent": "npm -w apps/slm-agent run dev"
+  }
+}

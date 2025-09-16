@@ -11,11 +11,12 @@ export default function Navbar() {
         📈 TradeNews Hub
       </Link>
       <ul className="flex gap-6 text-sm font-medium">
-        <li><Link href="/">Home</Link></li>
-        <li><Link href="/news">Stock News</Link></li>
-        <li><Link href="/dashboard" className="text-black font-semibold">Trade Stocks</Link></li>
-        <li><Link href="/slm">SLM Selection</Link></li>
-        <li><Link href="/user">User</Link></li>
+        <li><Link href="/" className="hover:underline">Home</Link></li>
+        <li><Link href="/news" className="hover:underline">Stock News</Link></li>
+        <li><Link href="/dashboard" className="hover:underline">Trade Stocks</Link></li>
+        <li><Link href="/slm" className="hover:underline">SLM Selection</Link></li>
+        <li><Link href="/user" className="hover:underline">User</Link></li>
+        <li><Link href="/paper" className="hover:underline">Paper</Link></li>
       </ul>
     </nav>
   );
