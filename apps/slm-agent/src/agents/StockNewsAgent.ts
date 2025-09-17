@@ -8,7 +8,7 @@ import { SYSTEM_PROMPT, REACT_INSTRUCTIONS_AND_FEWSHOT } from "../prompts/index.
 import { logger as baseLogger } from "../util/logger.js";
 
 type AgentOpts = {
-  llm: SLMAdapter;
+  slm: SLMAdapter;
   maxSteps?: number;
   postNewsNudge?: boolean;
   logger?: typeof baseLogger;
@@ -16,7 +16,7 @@ type AgentOpts = {
   reactInstructions?: string;
 };
 export class StockNewsAgent {
-  private llm: SLMAdapter;
+  private slm: SLMAdapter;
   private maxSteps: number;
   private postNewsNudge: boolean;
   private log: typeof baseLogger;
@@ -25,7 +25,7 @@ export class StockNewsAgent {
   private reactInstructions: string;
 
   constructor(opts: AgentOpts) {
-    this.llm = opts.llm;
+  this.slm = opts.slm;
     this.maxSteps = opts.maxSteps ?? 6;
     this.postNewsNudge = opts.postNewsNudge ?? true;
     this.log = (opts.logger as any) || baseLogger;
@@ -53,17 +53,17 @@ export class StockNewsAgent {
     for (let step = 0; step < this.maxSteps; step++) {
       log.info({ event: "step.start", step }, "Agent step start");
 
-      // Call LLM
+      // Call SLM
       const t0 = Date.now();
       let content = "";
       try {
-        ({ content } = await this.llm.chat(buf.all()));
+        ({ content } = await this.slm.chat(buf.all()));
       } catch (err) {
-        log.error({ event: "llm.error", step, err }, "LLM call failed");
-        return { final: "LLM call failed. Try again.", trace: buf.all() };
+        log.error({ event: "slm.error", step, err }, "SLM call failed");
+        return { final: "SLM call failed. Try again.", trace: buf.all() };
       }
       const latency = Date.now() - t0;
-      log.info({ event: "llm.response", step, latency_ms: latency, contentLen: content?.length ?? 0 }, "LLM response");
+      log.info({ event: "slm.response", step, latency_ms: latency, contentLen: content?.length ?? 0 }, "SLM response");
       buf.pushAssistant(content);
 
       // Parse fences
