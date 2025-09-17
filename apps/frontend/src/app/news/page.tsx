@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 
 type SymbolT = { exchange: "NSE" | "BSE"; symbol: string; token?: string };
+type AnalysisHeadline = { date?: string; title: string; source?: string; url?: string };
 type AnalysisT = {
   id: string;
   symbol: SymbolT;
@@ -15,6 +17,8 @@ type AnalysisT = {
   asOf: string; // ISO
   targetPrice?: number;
   stopLoss?: number;
+  headlines?: AnalysisHeadline[];
+  sources?: string[];
 };
 
 export default function NewsAnalyzePage() {
@@ -22,6 +26,7 @@ export default function NewsAnalyzePage() {
   const [loading, setLoading] = useState(false);
   const [analyses, setAnalyses] = useState<AnalysisT[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ltp, setLtp] = useState<number | null>(null);
 
   const onSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -49,6 +54,21 @@ export default function NewsAnalyzePage() {
       setLoading(false);
     }
   };
+
+useEffect(() => {
+  let on = true;
+  (async () => {
+    if (analyses && analyses.length > 0) {
+      try {
+        const { data } = await axios.get("/api/market/ltp", {
+          params: { exchange: analyses[0].symbol.exchange, symbol: analyses[0].symbol.symbol }
+        });
+        if (on && typeof data?.ltp === "number") setLtp(data.ltp);
+      } catch {}
+    }
+  })();
+  return () => { on = false; };
+}, [analyses]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -92,7 +112,7 @@ export default function NewsAnalyzePage() {
                 <div className="h-4 w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded mt-4"></div>
               </div>
             ) : (
-              analyses?.map((analysis) => <AnalysisCard key={analysis.id} analysis={analysis} />)
+              analyses?.map((analysis) => <AnalysisCard key={analysis.id} analysis={analysis} ltp={ltp} />)
             )}
           </div>
         </div>
@@ -109,10 +129,9 @@ function badgeColor(stance: AnalysisT["stance"]) {
     : "bg-amber-100 text-amber-700 border-amber-200";
 }
 
-import { useRouter } from "next/navigation";
-
-function AnalysisCard({ analysis }: { analysis: AnalysisT }) {
-  console.log('qaz---analysis', analysis);
+function AnalysisCard({ analysis, ltp }: { analysis: AnalysisT; ltp: number | null }) {
+    console.log('qaz----analysis', analysis);
+    console.log('qaz----ltp', ltp);
   const [placing, setPlacing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const router = useRouter();
@@ -125,9 +144,8 @@ function AnalysisCard({ analysis }: { analysis: AnalysisT }) {
       const { data } = await axios.post("/api/paper/orders", {
         symbol: analysis.symbol, side, qty: 1, type: "MARKET"
       });
-  const order = data?.order;
-  setMsg(order ? `Filled: ${order.side} ${order.qty} ${order.symbol?.symbol} @ ${order.price}` : "Order placed.");
-      // quick redirect to paper dashboard
+      const order = data?.order;
+      setMsg(order ? `Filled: ${order.side} ${order.qty} ${order.symbol?.symbol} @ ${order.price}` : "Order placed.");
       setTimeout(() => router.push("/paper"), 900);
     } catch (e: unknown) {
       if (typeof e === "object" && e !== null) {
@@ -146,30 +164,58 @@ function AnalysisCard({ analysis }: { analysis: AnalysisT }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${badgeColor(analysis.stance)}`}>
-            {analysis?.stance}
+            {analysis.stance}
             <span className="opacity-70">({Math.round(analysis.confidence * 100)}%)</span>
           </div>
           <h3 className="mt-3 text-xl font-bold tracking-tight">
-            {analysis?.symbol?.exchange}:{analysis?.symbol?.symbol}
+            {analysis.symbol.exchange}:{analysis.symbol.symbol}
           </h3>
           <p className="mt-2 text-slate-700 leading-relaxed whitespace-pre-line">
-            {analysis?.rationale}
+            {analysis.rationale}
           </p>
         </div>
+
+        {/* single, consolidated meta block */}
         <div className="text-right text-sm text-slate-500">
           <div>{new Date(analysis.asOf).toLocaleString()}</div>
-          {analysis?.targetPrice && (
+          {ltp != null && (
             <div className="mt-1">
-              TP: <span className="font-semibold">{analysis?.targetPrice}</span>
+              LTP: <span className="font-semibold">{ltp.toFixed(2)}</span>
             </div>
           )}
-          {analysis?.stopLoss && (
+          {analysis.targetPrice && (
+            <div className="mt-1">
+              TP: <span className="font-semibold">{analysis.targetPrice}</span>
+            </div>
+          )}
+          {analysis.stopLoss && (
             <div>
-              SL: <span className="font-semibold">{analysis?.stopLoss}</span>
+              SL: <span className="font-semibold">{analysis.stopLoss}</span>
             </div>
           )}
         </div>
       </div>
+
+      {analysis.headlines && analysis.headlines.length > 0 && (
+        <div className="mt-4 space-y-1">
+          <div className="text-sm font-semibold text-slate-700">Headlines</div>
+          <ul className="text-sm list-disc pl-5">
+            {analysis.headlines.slice(0, 3).map((h, i) => (
+              <li key={i} className="leading-snug">
+                {h.url ? (
+                  <a href={h.url} target="_blank" rel="noreferrer" className="underline hover:no-underline">
+                    {h.title}
+                  </a>
+                ) : (
+                  h.title
+                )}
+                {h.source && <span className="text-slate-500"> — {h.source}</span>}
+                {h.date && <span className="text-slate-400"> · {h.date}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-4 flex items-center justify-between gap-3">
         {msg && <div className="text-sm text-slate-600">{msg}</div>}
@@ -184,3 +230,4 @@ function AnalysisCard({ analysis }: { analysis: AnalysisT }) {
     </div>
   );
 }
+        

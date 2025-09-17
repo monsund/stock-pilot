@@ -7,7 +7,9 @@ import { OllamaAdapter } from './core/SLMAdapters.js';
 import { toAnalyses } from './agents/transform.js';
 import { placeMarket, listOrders, listPositions } from "./paper/store.js";
 import { getLtp } from "./paper/ltp.js";
+import { callTool } from './mcp/client.js';
 
+type NewsArticle = { title: string; url: string; source?: string; publishedAt?: string };
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -30,6 +32,29 @@ app.post('/analyze', async (req, res) => {
       });
     const result = await agent.run(query);
     const analyses = toAnalyses(query, result);
+
+    try {
+      const first = analyses?.[0];
+      const base = process.env.NEWS_MCP_BASE;
+      const needNews = first && (!first.headlines || first.headlines.length === 0);
+      if (base && needNews) {
+        const arts = await callTool<any, NewsArticle[]>(
+          base,
+          "news.search",
+          { query, lookback: "14d", locale: "en-IN" }
+        );
+        first.headlines = arts.slice(0, 3).map(a => ({
+          title: a.title,
+          url: a.url,
+          source: a.source,
+          date: a.publishedAt?.slice(0, 10)
+        }));
+        first.sources = Array.from(new Set([...(first.sources ?? []), ...arts.map(a => a.url)]));
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "news-mcp enrichment failed (non-fatal)");
+    }
+
     res.json({ analyses });
   } catch (err: any) {
     logger.error({ err }, 'Error in /analyze');
@@ -59,6 +84,31 @@ app.get("/paper/orders", (_req, res) => {
 
 app.get("/paper/positions", (_req, res) => {
   res.json({ positions: listPositions() });
+});
+
+app.get("/market/ltp", async (req, res) => {
+  try {
+    const exchange = String(req.query.exchange || "");
+    const symbol = String(req.query.symbol || "");
+    if (!exchange || !symbol) return res.status(400).json({ error: "exchange & symbol required" });
+    const ltp = await getLtp({ exchange: exchange as any, symbol });
+    res.json({ ltp });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "Internal error" });
+  }
+});
+
+app.get("/news/search", async (req, res) => {
+  try {
+    const base = process.env.NEWS_MCP_BASE;
+    if (!base) return res.status(501).json({ error: "NEWS_MCP_BASE not set" });
+    const query = String(req.query.query || "");
+    if (!query) return res.status(400).json({ error: "query required" });
+    const articles = await callTool<any, any[]>(base, "news.search", { query, lookback: "14d", locale: "en-IN" });
+    res.json({ articles });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "Internal error" });
+  }
 });
 
 
