@@ -8,6 +8,7 @@ import { toAnalyses } from './agents/transform.js';
 import { placeMarket, listOrders, listPositions } from "./paper/store.js";
 import { getLtp } from "./paper/ltp.js";
 import { callTool } from './mcp/client.js';
+import { enrichWithHeadlines } from './mcp/enrich.js';
 
 type NewsArticle = { title: string; url: string; source?: string; publishedAt?: string };
 
@@ -24,33 +25,17 @@ app.post('/analyze', async (req, res) => {
     }
     logger.info({ query }, 'Received /analyze request');
       const agent = new StockNewsAgent({
-        llm: OllamaAdapter,
+        slm: OllamaAdapter,
         maxSteps: 6,
         postNewsNudge: true,
         systemPrompt: SYSTEM_PROMPT,
         reactInstructions: REACT_INSTRUCTIONS_AND_FEWSHOT
       });
     const result = await agent.run(query);
-    const analyses = toAnalyses(query, result);
+    let analyses = toAnalyses(query, result);
 
     try {
-      const first = analyses?.[0];
-      const base = process.env.NEWS_MCP_BASE;
-      const needNews = first && (!first.headlines || first.headlines.length === 0);
-      if (base && needNews) {
-        const arts = await callTool<any, NewsArticle[]>(
-          base,
-          "news.search",
-          { query, lookback: "14d", locale: "en-IN" }
-        );
-        first.headlines = arts.slice(0, 3).map(a => ({
-          title: a.title,
-          url: a.url,
-          source: a.source,
-          date: a.publishedAt?.slice(0, 10)
-        }));
-        first.sources = Array.from(new Set([...(first.sources ?? []), ...arts.map(a => a.url)]));
-      }
+      analyses = await enrichWithHeadlines(query, analyses);
     } catch (e) {
       logger.warn({ err: e }, "news-mcp enrichment failed (non-fatal)");
     }

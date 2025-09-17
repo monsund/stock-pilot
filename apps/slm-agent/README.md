@@ -2,14 +2,14 @@
 
 
 
-SLM Agent is a Node.js/TypeScript service for orchestrating stock-pilot tools and agents. It exposes endpoints for agent queries and integrates with other microservices like news-agent and mcp-angel.This service orchestrates tools and agents for stock-pilot using Node.js and TypeScript.
+SLM Agent is a Node.js/TypeScript service for orchestrating stock-pilot tools and agents. It exposes endpoints for agent queries and integrates with other microservices like news-mcp (Google News search) and mcp-angel. This service orchestrates tools and agents for stock-pilot using Node.js and TypeScript.
 
 
 
 
 ## Ollama Setup
 
-SLM Agent uses Ollama for LLM inference. Make sure Ollama is installed and running:
+SLM Agent uses Ollama for SLM inference. Make sure Ollama is installed and running:
 
 1. [Install Ollama](https://ollama.com/download) if not already installed.
 2. Start the Ollama server:
@@ -24,7 +24,7 @@ SLM Agent uses Ollama for LLM inference. Make sure Ollama is installed and runni
    ```bash
    ollama pull llama3
    ```
-5. Set the model name in your `.env` file (e.g., `OLLAMA_MODEL=llama3`).
+5. The model name is now configured in code (see `src/adapters/slm/ollama.ts`).
 
 ## Setup
 
@@ -38,7 +38,7 @@ SLM Agent uses Ollama for LLM inference. Make sure Ollama is installed and runni
 
    ```   ```
 
-2. Copy `.env.example` to `.env` and set environment variables as needed.2. Copy `.env.example` to `.env` and set environment variables.
+2. Copy `.env.example` to `.env` and set environment variables as needed.
 
 3. Build the project:3. Build and start:
 
@@ -60,7 +60,7 @@ SLM Agent uses Ollama for LLM inference. Make sure Ollama is installed and runni
 ## Folder Structure
 
 - `src/index.ts` — Express entrypoint
-- `src/tools/` — Tool clients (news-agent, mcp-angel, etc.)
+- `src/tools/` — Tool clients (news-mcp, mcp-angel, etc.)
 - `src/prompts/` — Prompt templates
 - `src/agents/` — Agent implementations
 - `src/core/` — Core logic and adapters
@@ -69,7 +69,7 @@ SLM Agent uses Ollama for LLM inference. Make sure Ollama is installed and runni
 
 ## Environment Variables
 
-See `.env.example` for required variables.
+See `.env.example` for required variables. 
 
 ## Development
 
@@ -78,7 +78,7 @@ See `.env.example` for required variables.
 
 ## Integrations
 
-- Communicates with `news-agent` and `mcp-angel` microservices for news and trading operations.
+- Communicates with `news-mcp` (Google News search) and `mcp-angel` microservices for news and trading operations.
 
 ## License
 
