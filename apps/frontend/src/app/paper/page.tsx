@@ -39,8 +39,14 @@ export default function PaperDashboard() {
       ]);
       setOrders(o.data?.orders ?? []);
       setPositions(p.data?.positions ?? []);
-    } catch (e: any) {
-      setErr(e?.response?.data?.error || e?.message || "Failed to load");
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e)) {
+        setErr(e.response?.data?.error || e.message || "Failed to load");
+      } else if (e instanceof Error) {
+        setErr(e.message);
+      } else {
+        setErr("Failed to load");
+      }
     } finally { setLoading(false); }
   };
 
