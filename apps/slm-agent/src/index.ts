@@ -23,7 +23,7 @@ app.post('/analyze', async (req, res) => {
     if (!query || typeof query !== 'string') {
       return res.status(400).json({ error: 'Body must include { query: string }' });
     }
-    logger.info({ query }, 'Received /analyze request');
+    logger.info({ query }, 'qaz---Received /analyze request with query');
       const agent = new StockNewsAgent({
         slm: OllamaAdapter,
         maxSteps: 6,

@@ -12,10 +12,8 @@ export default function Navbar() {
       </Link>
       <ul className="flex gap-6 text-sm font-medium">
         <li><Link href="/" className="hover:underline">Home</Link></li>
-        <li><Link href="/news" className="hover:underline">Stock News</Link></li>
         <li><Link href="/dashboard" className="hover:underline">Trade Stocks</Link></li>
-        <li><Link href="/slm" className="hover:underline">SLM Selection</Link></li>
-        <li><Link href="/user" className="hover:underline">User</Link></li>
+        <li><Link href="/chat" className="hover:underline">Chat</Link></li>
         <li><Link href="/paper" className="hover:underline">Paper</Link></li>
       </ul>
     </nav>
