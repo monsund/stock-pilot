@@ -5,8 +5,23 @@ export type ParsedAssessment = {
   targetPrice?: number;
   stopLoss?: number;
   rationale: string;               // short summary
-  headlines: ParsedHeadline[];     // top 3 from CURRENT/RECENT
-  sources: string[];               // URLs listed in SOURCES:
+  headlines: ParsedHeadline[];
+  sources: string[];
+  ticker?: string;
+  companyName?: string;
+  timestamp?: string;
+  lookback?: string;
+  about?: string;
+  vision?: string;
+  currentNews?: ParsedHeadline[];
+  recentNews?: ParsedHeadline[];
+  whatChanged?: string;
+  setbacks?: string;
+  growth?: string;
+  evidence?: string;
+  risks?: string[];
+  catalysts?: string;
+  assessment?: string;
 };
 
 const num = (s: string | undefined | null) => {
@@ -52,20 +67,55 @@ export function parseFinalBlock(finalText: string): ParsedAssessment {
   const tp = num((text.match(/target\s*price\s*[:=]\s*([^\n]+)/i) || text.match(/\bTP[:=]\s*([^\n]+)/i))?.[1]);
   const sl = num((text.match(/stop\s*loss\s*[:=]\s*([^\n]+)/i) || text.match(/\bSL[:=]\s*([^\n]+)/i))?.[1]);
 
-  // 4) Rationale: prefer WHAT_CHANGED block
+  // Extract all requested sections
+  const ticker = text.match(/^\s*TICKER:\s*(.+)$/im)?.[1]?.trim();
+  const companyName = text.match(/^\s*COMPANY_NAME:\s*(.+)$/im)?.[1]?.trim();
+  const timestamp = text.match(/^\s*TIMESTAMP:\s*(.+)$/im)?.[1]?.trim();
+  const lookback = text.match(/^\s*LOOKBACK:\s*(.+)$/im)?.[1]?.trim();
+  const about = sliceSection(text, "ABOUT_COMPANY");
+  const vision = sliceSection(text, "VISION");
+  const currentNews = parseHeadlinesBlock(sliceSection(text, "CURRENT_NEWS"));
+  const recentNews = parseHeadlinesBlock(sliceSection(text, "RECENT_NEWS"));
   const whatChanged = sliceSection(text, "WHAT_CHANGED");
-  const rationale = (whatChanged?.split(/\n/).slice(0, 3).join("\n") || text).slice(0, 400);
+  const setbacks = sliceSection(text, "SETBACKS");
+  const growth = sliceSection(text, "GROWTH_POSSIBILITY");
+  const evidence = sliceSection(text, "EVIDENCE");
+  const risksBlock = sliceSection(text, "RISKS");
+  const risks = risksBlock ? risksBlock.split(/\n+/).map(l => l.trim()).filter(Boolean) : [];
+  const catalysts = sliceSection(text, "CATALYSTS");
+  const assessment = sliceSection(text, "ASSESSMENT");
 
-  // 5) Headlines: CURRENT_NEWS then RECENT_NEWS (take up to 3)
-  const current = parseHeadlinesBlock(sliceSection(text, "CURRENT_NEWS"));
-  const recent = parseHeadlinesBlock(sliceSection(text, "RECENT_NEWS"));
-  const headlines = [...current, ...recent].slice(0, 3);
+  // Headlines for legacy compatibility
+  const headlines = [...currentNews, ...recentNews].slice(0, 3);
 
-  // 6) SOURCES URLs
+  // Sources URLs
   const sourcesBlock = sliceSection(text, "SOURCES");
   const sources = sourcesBlock
     ? sourcesBlock.split(/\n+/).map(l => (l.match(/https?:\/\/\S+/)?.[0] || "")).filter(Boolean)
     : [];
 
-  return { stance, confidence, targetPrice: tp, stopLoss: sl, rationale, headlines, sources };
+  return {
+    stance,
+    confidence,
+    targetPrice: tp,
+    stopLoss: sl,
+    rationale: whatChanged?.split(/\n/).slice(0, 3).join("\n") || about || "",
+    headlines,
+    sources,
+    ticker,
+    companyName,
+    timestamp,
+    lookback,
+    about,
+    vision,
+    currentNews,
+    recentNews,
+    whatChanged,
+    setbacks,
+    growth,
+    evidence,
+    risks,
+    catalysts,
+    assessment,
+  };
 }

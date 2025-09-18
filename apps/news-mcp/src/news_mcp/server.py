@@ -60,7 +60,6 @@ def _cache_set(key: str, val: List[Article]) -> None:
 # ---------- Tool logic (shared) ----------
 @mcp.tool(name="news.search")
 def news_search(payload: NewsSearchInput) -> List[Article]:
-    print(f"qaz--------[news-mcp] news_search called with: {payload}", flush=True)
     days = int(payload.lookback.rstrip("d")) if payload.lookback.endswith("d") else 14
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -73,7 +72,6 @@ def news_search(payload: NewsSearchInput) -> List[Article]:
     gl, hl = ceid.split(":")
     q = quote_plus(payload.query.strip())
     rss = f"https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}"
-    print(f"qaz-----[news-mcp] fetching RSS: {rss}", flush=True)
 
     feed = feedparser.parse(rss)
 
@@ -86,7 +84,6 @@ def news_search(payload: NewsSearchInput) -> List[Article]:
 
     for idx, it in enumerate(feed.entries or []):
         try:
-            # print(f"[news-mcp] parsing entry {idx}: {it}", flush=True)
             title = (it.get("title") or "").strip()
             link_raw = (it.get("link") or "").strip()
             if not title or not link_raw:
@@ -152,12 +149,12 @@ async def http_news_search(payload: NewsSearchInput = Body(...)):
     import json
     try:
         tool_result = await news_search.run({"payload": payload.model_dump()})
-        print(f"qaz---[news-mcp] tool_result.content: {tool_result.content}", flush=True)
         # Extract JSON string from first TextContent object
+        if not tool_result.content or len(tool_result.content) == 0:
+            return {"articles": []}
         articles_json = tool_result.content[0].text
         articles = json.loads(articles_json)
-        print(f"qaz---[news-mcp] parsed articles: {articles}", flush=True)
-        return articles
+        return {"articles": articles}
     except Exception as e:
         print(f"[news-mcp] fatal error: {e}\n{traceback.format_exc()}", flush=True)
         raise HTTPException(status_code=500, detail=f"news.search failed: {e}")
