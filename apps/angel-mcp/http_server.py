@@ -12,14 +12,14 @@ http_app = FastAPI(title="angel-mcp-http")
 TOOL_MAP = {
     "ping": ping,
     "Yo": Yo,
-    "angel_login_status": angel_login_status,
-    "angel_login": angel_login,
-    "angel_logout": angel_logout,
-    "angel_search_scrip": angel_search_scrip,
-    "angel_ltp": angel_ltp,
-    "angel_candles": angel_candles,
-    "angel_mode": angel_mode,
-    "angel_set_mode": angel_set_mode,
+    "login_status": angel_login_status,
+    "login": angel_login,
+    "logout": angel_logout,
+    "search_scrip": angel_search_scrip,
+    "ltp": angel_ltp,
+    "candles": angel_candles,
+    "mode": angel_mode,
+    "set_mode": angel_set_mode,
     "place_order": place_order,
     "list_orders": list_orders,
     "list_positions": list_positions,
@@ -34,17 +34,98 @@ http_app.add_middleware(
     allow_headers=["*"],
 )
 
-@http_app.post("/tools/{tool_name}")
-async def call_tool(tool_name: str, request: Request):
-    if tool_name not in TOOL_MAP:
-        return JSONResponse({"error": f"Tool '{tool_name}' not found"}, status_code=404)
-    args = await request.json()
+
+# POST endpoints for state-changing actions
+@http_app.post("/login")
+async def login_endpoint():
+    print("HTTP login request", flush=True)
+    return JSONResponse(TOOL_MAP["login"]())
+
+@http_app.post("/logout")
+async def logout_endpoint():
+    return JSONResponse(TOOL_MAP["logout"]())
+
+@http_app.post("/search_scrip")
+async def search_scrip_endpoint(exchange: str, tradingSymbol: str):
+    return JSONResponse(TOOL_MAP["search_scrip"](exchange, tradingSymbol))
+
+@http_app.post("/set_mode")
+async def set_mode_endpoint(new_mode: str):
+    return JSONResponse(TOOL_MAP["set_mode"](new_mode))
+
+@http_app.post("/place_order")
+async def place_order_endpoint(exchange: str, tradingsymbol: str, transactiontype: str, quantity: int, ordertype: str = "MARKET", price: float = None, token: str = None):
+    return JSONResponse(TOOL_MAP["place_order"](exchange, tradingsymbol, transactiontype, quantity, ordertype, price, token))
+
+# GET endpoints for read-only actions
+@http_app.get("/ping")
+async def ping_endpoint():
+    return JSONResponse(TOOL_MAP["ping"]())
+
+@http_app.post("/ltp")
+async def ltp_endpoint(request: Request):
     try:
-        result = TOOL_MAP[tool_name](**args) if args else TOOL_MAP[tool_name]()
+        body = await request.json()
+        exchange = body.get("exchange")
+        tradingsymbol = body.get("tradingsymbol")
+        # Get symboltoken from search_scrip
+        scrips = TOOL_MAP["search_scrip"](exchange, tradingsymbol)
+        symboltoken = None
+        if exchange and exchange.lower() == "bse":
+            if scrips and scrips[0].get("symboltoken"):
+                symboltoken = scrips[0]["symboltoken"]
+        else:
+            for scrip in scrips:
+                if scrip.get("tradingsymbol", "").endswith("-EQ"):
+                    symboltoken = scrip.get("symboltoken")
+                    break
+        if not symboltoken:
+            return JSONResponse({"error": f"No symboltoken found for {tradingsymbol} on {exchange}"}, status_code=404)
+        result = angel_ltp(exchange, tradingsymbol, symboltoken)
         return JSONResponse(result)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
+@http_app.post("/candles")
+async def candles_endpoint(request: Request):
+    try:
+        body = await request.json()
+        exchange = body.get("exchange")
+        tradingsymbol = body.get("tradingsymbol")
+        interval = body.get("interval")
+        from_date = body.get("from_date")
+        to_date = body.get("to_date")
+        # Find symboltoken like ltp_endpoint
+        scrips = TOOL_MAP["search_scrip"](exchange, tradingsymbol)
+        symboltoken = None
+        if exchange and exchange.lower() == "bse":
+            if scrips and scrips[0].get("symboltoken"):
+                symboltoken = scrips[0]["symboltoken"]
+        else:
+            for scrip in scrips:
+                if scrip.get("tradingsymbol", "").endswith("-EQ"):
+                    symboltoken = scrip.get("symboltoken")
+                    break
+        if not symboltoken:
+            return JSONResponse({"error": f"No symboltoken found for {tradingsymbol} on {exchange}"}, status_code=404)
+        result = TOOL_MAP["candles"](exchange, symboltoken, interval, from_date, to_date)
+        return JSONResponse(result)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@http_app.get("/mode")
+async def mode_endpoint():
+    return JSONResponse(TOOL_MAP["mode"]())
+
+@http_app.get("/list_orders")
+async def list_orders_endpoint():
+    return JSONResponse(TOOL_MAP["list_orders"]())
+
+@http_app.get("/list_positions")
+async def list_positions_endpoint():
+    return JSONResponse(TOOL_MAP["list_positions"]())
+
 if __name__ == "__main__":
-    print("angel-mcp HTTP server running", file=sys.stderr, flush=True)
-    uvicorn.run(http_app, host="0.0.0.0", port=int(os.getenv("ANGEL_HTTP_PORT", "6277")), log_level="info")
+    port = int(os.environ.get("ANGEL_HTTP_PORT", 8001))
+    print(f"angel-mcp HTTP server running on port {port}", file=sys.stderr, flush=True)
+    uvicorn.run(http_app, host="0.0.0.0", port=port, log_level="info")

@@ -17,7 +17,8 @@ def angel_login():
 def angel_logout():
     return client.logout()
 def angel_search_scrip(exchange: str, query: str):
-    return client.search_scrip(exchange, query)
+    result = client.search_scrip(exchange, query)
+    return result
 def angel_ltp(exchange: str, tradingsymbol: str, token: str):
     return client.ltp(exchange, tradingsymbol, token)
 def angel_candles(exchange: str, token: str, interval: str, from_dt: str, to_dt: str):

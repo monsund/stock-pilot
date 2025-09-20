@@ -25,8 +25,6 @@ export class SymbolResolveTool implements Tool<{ query: string }, any> {
         ? { symbol: first.symbol, companyName: first.shortname || first.longname }
         : { symbol: query, companyName: undefined };
     cache.set(k, out);
-    // Optionally log resolution
-    // console.log(`Resolved symbol for "${query}":`, out);
     return out;
   }
 }

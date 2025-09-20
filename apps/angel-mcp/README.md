@@ -1,3 +1,38 @@
+## Running MCP and HTTP Servers
+
+
+### 1. MCP Server
+
+Start the MCP server (agent/tools logic) on port 8000 using uvicorn (recommended for FastAPI apps):
+
+```sh
+cd apps/angel-mcp
+uvicorn server:http_app --host 0.0.0.0 --port 8000 --reload
+# or, if you want to specify the port via env:
+MCP_PORT=8000 uvicorn server:http_app --host 0.0.0.0 --port 8000 --reload
+```
+
+
+### 2. HTTP Server
+
+Start the HTTP server (tool API exposure) on port 8001:
+
+```sh
+cd apps/angel-mcp
+uvicorn http_server:http_app --host 0.0.0.0 --port 8001 --reload
+# or, if you want to specify the port via env:
+ANGEL_HTTP_PORT=8001 uvicorn http_server:http_app --host 0.0.0.0 --port 8001 --reload
+```
+
+#### Notes
+- Make sure FastAPI and Uvicorn are installed in your environment:
+	```sh
+	pip install fastapi uvicorn
+	# or
+	uv pip install fastapi uvicorn
+	```
+- Both servers must run on different ports.
+- You can use `.env` files or export environment variables for port configuration.
 # Angel One MCP Server
 
 This project provides a server and client implementation for interacting with Angel One’s SmartAPI, supporting automated trading, data retrieval, and tool orchestration.

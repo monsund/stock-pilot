@@ -2,7 +2,6 @@
 // Sidebar (hidden on mobile) + main content.
 // Search at top-right; Prices + Trades in a 2-col grid on md+; OrderForm full-width below.
 "use client";
-import Navbar from "@/components/dashboard/Navbar";
 import SidebarPortfolio from "@/components/dashboard/SidebarPortfolio";
 import PricesCard from "@/components/dashboard/PricesCard";
 import TradesCard from "@/components/dashboard/TradesCard";
@@ -30,7 +29,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <Navbar />
       <div className="flex flex-1 max-w-7xl mx-auto px-4 py-6 gap-6">
         {/* Sidebar */}
         <div className="w-64 hidden md:block">

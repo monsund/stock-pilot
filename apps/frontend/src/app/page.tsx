@@ -1,12 +1,10 @@
 // Home page: minimal landing with CTA to Dashboard.
 // Uses Navbar, centers content, Tailwind-only.
 import Link from "next/link";
-import Navbar from "../components/dashboard/Navbar";
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <Navbar />
       <main className="flex flex-1 items-center justify-center px-6">
         <div className="text-center space-y-6">
           <h1 className="text-3xl font-bold">Welcome to 📈 TradeNews Hub</h1>
