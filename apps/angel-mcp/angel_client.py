@@ -176,7 +176,7 @@ class AngelClient:
 
         token = self._bearer()
         resp = _post(token)
-
+        
         def _ok(d: Dict[str, Any]) -> bool:
             ok = d.get("success")
             if ok is None: ok = d.get("status")
@@ -192,6 +192,7 @@ class AngelClient:
             self.force_login()
             token = self._bearer()
             resp = _post(token)
+            print("[DEBUG] search_scrip response (after relogin):", resp)
 
         if not _ok(resp):
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
@@ -241,7 +242,6 @@ class AngelClient:
         if resp.get("status") is False or resp.get("success") is False:
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
             code = resp.get("errorCode") or resp.get("errorcode") or resp.get("code")
-            self.log.error(f"candles failed: {msg} (code={code})")
             raise RuntimeError(f"candles failed: {msg} (code={code})")
         return resp
 

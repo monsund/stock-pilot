@@ -14,6 +14,7 @@ export default function Navbar() {
         <li><Link href="/" className="hover:underline">Home</Link></li>
         <li><Link href="/dashboard" className="hover:underline">Trade Stocks</Link></li>
         <li><Link href="/chat" className="hover:underline">Chat</Link></li>
+        <li><Link href="/trade" className="hover:underline">Trade</Link></li>
         <li><Link href="/paper" className="hover:underline">Paper</Link></li>
       </ul>
     </nav>
