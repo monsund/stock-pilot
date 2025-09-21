@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ActionSchema } from "../schemas/actions.js";
-import { SLMAdapter, ChatMessage, AgentRunResult, ActionCall } from "../core/types.js";
+import { SLMAdapter, ChatMessage, AgentRunResult } from "../core/types.js";
 import { createMessageBuffer } from "../core/MessageBuffer.js";
 import { FenceParser } from "../core/FenceParser.js";
 import { buildToolRegistry } from "../tools/registry.js";
