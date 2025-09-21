@@ -6,10 +6,11 @@ export const ANGEL_BASE =
 
 export const PATHS = {
   login: '/login',
-  ltp: '/ltp',            // POST {exchange, tradingsymbol, token}
-  candles: '/candles',    // GET ?symbol=...&tf=15m&from=&to=
-  orders: '/orders',      // GET list, POST place
-  positions: '/positions' // GET
+  ltp: '/ltp',
+  candles: '/candles',
+  list_orders: '/list_orders',
+  list_positions: '/list_positions',
+  place_order: '/place_order',
 };
 
 export type LoginRes = { loggedIn: boolean; mode: 'PAPER' | 'LIVE' };
@@ -30,10 +31,36 @@ export type LTPRes = {
 };
 export type Candle = { timestamp: string; open: number; high: number; low: number; close: number; volume: number };
 export type CandlesRes = { ohlcv: Candle[] };
-export type PlaceOrderReq = { symbol: string; side: 'BUY'|'SELL'; qty: number; type: 'MKT'|'LMT'; price?: number };
+export type PlaceOrderReq = {
+  exchange: string;
+  tradingsymbol: string;
+  transactiontype: 'BUY' | 'SELL';
+  quantity: number;
+  ordertype: string;
+  price?: number;
+};
 export type PlaceOrderRes = { orderId: string; status: string; avgPrice?: number; qty: number; time: string; symbol?: string; side?: string };
-export type Order = { orderId: string; status: string; symbol: string; side: string; qty: number; avgPrice?: number; time: string };
-export type Position = { symbol: string; qty: number; avgPrice: number; pnl?: number };
+export type Order = {
+  orderid: string;
+  mode: string;
+  exchange: string;
+  tradingsymbol: string;
+  symboltoken: string;
+  transactiontype: 'BUY' | 'SELL';
+  ordertype: string;
+  quantity: number;
+  price: number;
+  status: string;
+  timestamp: number;
+};
+export type Position = {
+  symbol: string;
+  exchange: string;
+  symboltoken: string;
+  qty: number;
+  avgPrice: number;
+  pnl?: number;
+};
 
 
 const api = axios.create({ baseURL: ANGEL_BASE, headers: { 'content-type': 'application/json' } });
@@ -52,15 +79,15 @@ export const angel = {
     return response.data;
   },
   placeOrder: async (body: PlaceOrderReq) => {
-    const response = await api.post(PATHS.orders, body);
+    const response = await api.post(PATHS.place_order, body);
     return response.data;
   },
   listOrders: async () => {
-    const response = await api.get(PATHS.orders);
+    const response = await api.get(PATHS.list_orders);
     return response.data;
   },
   positions: async () => {
-    const response = await api.get(PATHS.positions);
+    const response = await api.get(PATHS.list_positions);
     return response.data;
   },
 };

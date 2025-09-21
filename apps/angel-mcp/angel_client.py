@@ -192,7 +192,6 @@ class AngelClient:
             self.force_login()
             token = self._bearer()
             resp = _post(token)
-            print("[DEBUG] search_scrip response (after relogin):", resp)
 
         if not _ok(resp):
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
