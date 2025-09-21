@@ -7,11 +7,24 @@ SLM Agent is a Node.js/TypeScript service for orchestrating stock-pilot tools an
 
 
 
-## Ollama Setup
 
-SLM Agent uses Ollama for SLM inference. Make sure Ollama is installed and running:
+## LLM Model Setup
 
-1. [Install Ollama](https://ollama.com/download) if not already installed.
+SLM Agent supports both local Ollama and Groq (OpenAI-compatible) models for LLM inference.
+
+### Using Groq
+
+Set the following environment variables in your `.env` file:
+
+- `GROQ_API_KEY` — Your Groq API key
+- `GROQ_MODEL_Llama` — Model name (default: `llama-3.1-8b-instant`)
+
+Groq will be used automatically if `GROQ_API_KEY` is set.
+
+### Using Ollama (local)
+
+Make sure Ollama is installed and running:
+1. [Install Ollama](https://ollama.com/download)
 2. Start the Ollama server:
    ```bash
    ollama serve
@@ -24,7 +37,9 @@ SLM Agent uses Ollama for SLM inference. Make sure Ollama is installed and runni
    ```bash
    ollama pull llama3
    ```
-5. The model name is now configured in code (see `src/adapters/slm/ollama.ts`).
+Set `OLLAMA_MODEL` in your `.env` file if you want to override the default model (`llama3.1:8b`).
+
+See `src/adapters/slm/ollama.ts` for model selection logic.
 
 ## Setup
 

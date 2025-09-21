@@ -58,6 +58,7 @@ const pushRecent = (q: string) => {
 
 // ---------- main page ----------
 export default function NewsSearchPage() {
+  const recentDropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const params = useSearchParams();
 
@@ -87,6 +88,24 @@ export default function NewsSearchPage() {
     return () => window.removeEventListener('keydown', onK);
   }, []);
 
+  // Click-away to close recent dropdown
+  useEffect(() => {
+    if (!showRecent) return;
+    function handleClick(e: MouseEvent) {
+      const input = inputRef.current;
+      const dropdown = recentDropdownRef.current;
+      if (!input || !dropdown) return;
+      if (
+        !input.contains(e.target as Node) &&
+        !dropdown.contains(e.target as Node)
+      ) {
+        setShowRecent(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showRecent]);
+
   // load recents once on client
   useEffect(() => setRecent(getRecent()), []);
 
@@ -95,6 +114,14 @@ export default function NewsSearchPage() {
     if (initialQ) doSearch(initialQ);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once
+
+  // Run search when topic changes due to recent selection
+  useEffect(() => {
+    if (!showRecent && topic && topic !== initialQ) {
+      doSearch(topic);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topic, showRecent]);
 
   const confidenceBarWidth = useMemo(() => `${toPct(analysis?.confidence)}%`, [analysis?.confidence]);
 
@@ -163,6 +190,15 @@ export default function NewsSearchPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
+      {/* Page Introduction */}
+      <div className="max-w-6xl mx-auto w-full px-4 pt-8 pb-2">
+        <div className="rounded-xl bg-white/80 border border-gray-200 shadow p-5 mb-4">
+          <h1 className="text-2xl font-bold mb-2 text-indigo-700">News & Stock Analysis</h1>
+          <p className="text-gray-700 text-base">
+            Search for a stock, company, or topic to analyze recent news and get a trading stance (BUY/SELL/HOLD) with confidence, rationale, risks, and catalysts. Recent searches are saved for quick access.
+          </p>
+        </div>
+      </div>
       {/* Top bar */}
       <div className="sticky top-0 z-10 bg-gray-100/80 backdrop-blur border-b border-gray-200">
         <div className="max-w-6xl mx-auto w-full px-4 py-4">
@@ -175,7 +211,7 @@ export default function NewsSearchPage() {
               value={topic}
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) onSubmit(); }}
-              placeholder="Search a stock, company, or topic… e.g., Tata Motors, Reliance, Tata Power"
+              placeholder="Search a stock, or company, e.g., Tata Motors, Reliance, Tata Power"
               className="flex-1 rounded-2xl px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               autoFocus
               aria-autocomplete="list"
@@ -202,6 +238,7 @@ export default function NewsSearchPage() {
             {/* Recent dropdown */}
             {showRecent && recent.length > 0 && (
               <div
+                ref={recentDropdownRef}
                 role="listbox"
                 className="absolute left-0 right-40 top-14 bg-white border border-gray-200 rounded-xl shadow-lg p-2 max-h-64 overflow-auto"
                 onMouseLeave={() => setShowRecent(false)}
@@ -211,7 +248,13 @@ export default function NewsSearchPage() {
                   <button
                     key={q}
                     role="option"
-                    onClick={() => { setTopic(q); doSearch(q); }}
+                    aria-selected={topic === q}
+                    onClick={() => {
+                      if (topic !== q) {
+                        setTopic(q);
+                        setShowRecent(false);
+                      }
+                    }}
                     className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50"
                   >
                     {q}
@@ -241,7 +284,7 @@ export default function NewsSearchPage() {
           {/* Empty state */}
           {!analysis && !loading && !error && (
             <div className="text-center text-slate-500 space-y-4">
-              <p>Type a topic above to analyze news & get a trading stance.</p>
+              <p>Type a stock name above to analyze news & get a trading stance.</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {['Tata Motors', 'Reliance', 'Tata Power', 'Adani Ports'].map((ex) => (
                   <button
@@ -278,7 +321,7 @@ export default function NewsSearchPage() {
               <div className="p-6 rounded-xl bg-white shadow relative">
                 <div className="flex flex-wrap items-center gap-3 mb-3">
                   <div className="text-lg font-semibold">
-                    {analysis.symbol.exchange}: {analysis.symbol.symbol}
+                    {analysis.symbol.symbol}
                   </div>
                   <span className={`px-3 py-1 text-sm rounded-full border ${stanceBadge(analysis.stance)}`}>
                     {analysis.stance}
