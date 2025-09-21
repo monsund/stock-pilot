@@ -1,3 +1,17 @@
+
+# Angel MCP
+
+Angel MCP is a backend service for automated trading, market data retrieval, and tool orchestration using Angel One’s SmartAPI. It provides:
+
+- A FastAPI-based MCP server for tool logic and orchestration
+- An HTTP server for REST API access to trading and market data
+- Support for both live and paper trading (simulated)
+- Extensible tools for scrip search, LTP, candles, order placement, and more
+
+This project is designed to be integrated with frontend dashboards and other automation clients.
+
+---
+
 ## Running MCP and HTTP Servers
 
 
@@ -15,6 +29,7 @@ MCP_PORT=8000 uvicorn server:http_app --host 0.0.0.0 --port 8000 --reload
 
 ### 2. HTTP Server
 
+
 Start the HTTP server (tool API exposure) on port 8001:
 
 ```sh
@@ -23,6 +38,34 @@ uvicorn http_server:http_app --host 0.0.0.0 --port 8001 --reload
 # or, if you want to specify the port via env:
 ANGEL_HTTP_PORT=8001 uvicorn http_server:http_app --host 0.0.0.0 --port 8001 --reload
 ```
+
+#### HTTP API Endpoints
+
+The HTTP server exposes the following endpoints for frontend and external integration:
+
+**POST Endpoints**
+
+- `/login` — Login to Angel One
+- `/logout` — Logout from Angel One
+- `/search_scrip` — Search for a scrip
+	- Body: `{ "exchange": "NSE", "tradingSymbol": "RELIANCE" }`
+- `/set_mode` — Set trading mode
+	- Body: `{ "new_mode": "PAPER" }`
+- `/place_order` — Place an order
+	- Body: `{ "exchange": "NSE", "tradingsymbol": "RELIANCE", "transactiontype": "BUY", "quantity": 10, "ordertype": "MARKET", "price": null }`
+- `/ltp` — Get last traded price
+	- Body: `{ "exchange": "NSE", "tradingsymbol": "RELIANCE" }`
+- `/candles` — Get candle data
+	- Body: `{ "exchange": "NSE", "tradingsymbol": "RELIANCE", "interval": "ONE_MINUTE", "from_date": "2025-09-13 09:15", "to_date": "2025-09-13 15:30" }`
+
+**GET Endpoints**
+
+- `/ping` — Health check
+- `/mode` — Get current trading mode
+- `/list_orders` — List all paper orders
+- `/list_positions` — List all paper positions
+
+All endpoints return JSON responses. For POST endpoints, send a JSON body as shown in the examples above.
 
 #### Notes
 - Make sure FastAPI and Uvicorn are installed in your environment:
