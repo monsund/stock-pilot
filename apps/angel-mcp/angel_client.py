@@ -1,5 +1,3 @@
-
-# Refactored AngelClient class
 import os
 import threading
 import logging
@@ -17,6 +15,16 @@ class AngelClient:
         self._client: Optional[SmartConnect] = None
         self._session: Optional[Dict[str, Any]] = None
         self.log = logging.getLogger("angel_client")
+        # Cache env variables for headers
+        self._local_ip = os.getenv("ANGEL_CLIENT_LOCAL_IP") or "127.0.0.1"
+        self._public_ip = os.getenv("ANGEL_CLIENT_PUBLIC_IP") or "127.0.0.1"
+        self._mac_addr = os.getenv("ANGEL_CLIENT_MAC") or "00:00:00:00:00:00"
+
+    def _format_error(self, msg: str, code: Any = "?") -> str:
+        return f"{msg} (code={code})"
+
+    def _log_error(self, context: str, msg: str, code: Any = "?") -> None:
+        self.log.error(f"{context} failed: {self._format_error(msg, code)}")
 
     def _need(self, name: str) -> str:
         v = os.getenv(name)
@@ -30,17 +38,14 @@ class AngelClient:
     def _bearer(self) -> str:
         if not self._session or not (self._session.get("jwt") or self._session.get("access")):
             self._login()
-        return self._session.get("jwt") or self._session.get("access")
+        # Unified token selection
+        return self._session.get("bearer") or self._session.get("jwt") or self._session.get("access")
 
     def _auth_header_value(self, token: str) -> str:
         return token if isinstance(token, str) and token.startswith("Bearer ") else f"Bearer {token}"
 
     def _headers(self, token: str) -> Dict[str, str]:
         # required by Angel One SmartAPI specification
-        local_ip = os.getenv("ANGEL_CLIENT_LOCAL_IP")  or "127.0.0.1"
-        public_ip= os.getenv("ANGEL_CLIENT_PUBLIC_IP") or "127.0.0.1"
-        mac_addr = os.getenv("ANGEL_CLIENT_MAC")       or "00:00:00:00:00:00"
-
         return {
             "Authorization": self._auth_header_value(token),
             "Content-Type": "application/json",
@@ -49,9 +54,9 @@ class AngelClient:
             "X-PrivateKey": self._api_key(),
             "X-UserType": "USER",
             "X-SourceID": "WEB",
-            "X-ClientLocalIP":  local_ip,
-            "X-ClientPublicIP": public_ip,
-            "X-MACAddress":     mac_addr,
+            "X-ClientLocalIP":  self._local_ip,
+            "X-ClientPublicIP": self._public_ip,
+            "X-MACAddress":     self._mac_addr,
         }
 
     def _login(self) -> SmartConnect:
@@ -76,8 +81,8 @@ class AngelClient:
         if not resp.get("status", False):
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
             code = resp.get("errorcode") or resp.get("code") or "?"
-            self.log.error(f"Login failed: {msg} (code={code})")
-            raise RuntimeError(f"Login failed: {msg} (code={code})")
+            self._log_error("Login", msg, code)
+            raise RuntimeError(self._format_error(msg, code))
 
         data = resp.get("data") or {}
         raw_jwt = data.get("jwtToken") or data.get("jwt_token")
@@ -87,7 +92,7 @@ class AngelClient:
 
         bearer = jwt or access
         if not bearer:
-            self.log.error(f"Login response missing tokens: {resp!r}")
+            self._log_error("Login", "response missing tokens", resp)
             raise RuntimeError(f"Login response missing tokens: {resp!r}")
 
         try:
@@ -119,7 +124,7 @@ class AngelClient:
             try: sc.setFeedToken(self._session["feedToken"])
             except Exception: pass
 
-    def _retry_if_invalid_token(self, func, *args, **kwargs):
+    def _retry_if_invalid_token(self, func, *args, **kwargs) -> Any:
         sc = self.get_client()
         self._ensure_auth(sc)
         resp = func(sc, *args, **kwargs)
@@ -170,7 +175,7 @@ class AngelClient:
             ctype = r.headers.get("content-type", "")
             if "application/json" not in ctype:
                 snippet = (r.text or "")[:200].replace("\n", " ")
-                self.log.error(f"search_scrip: non-JSON response (status={r.status_code}, ctype={ctype}, body~={snippet!r})")
+                self._log_error("search_scrip", f"non-JSON response (status={r.status_code}, ctype={ctype}, body~={snippet!r})")
                 raise RuntimeError(f"search_scrip: non-JSON response (status={r.status_code}, ctype={ctype}, body~={snippet!r})")
             return r.json()
 
@@ -196,15 +201,15 @@ class AngelClient:
         if not _ok(resp):
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
             code = resp.get("errorCode") or resp.get("errorcode") or resp.get("code")
-            self.log.error(f"search_scrip failed: {msg} (code={code})")
-            raise RuntimeError(f"search_scrip failed: {msg} (code={code})")
+            self._log_error("search_scrip", msg, code)
+            raise RuntimeError(self._format_error(msg, code))
 
         data = resp.get("data")
         if data in (None, ""): 
             return []
         if isinstance(data, list):
             return data
-        self.log.error(f"search_scrip: unexpected response {resp!r}")
+        self._log_error("search_scrip", f"unexpected response {resp!r}")
         raise RuntimeError(f"search_scrip: unexpected response {resp!r}")
 
     def ltp(self, exchange: str, tradingsymbol: str, token: str) -> Dict[str, Any]:
@@ -219,14 +224,14 @@ class AngelClient:
         resp = self._retry_if_invalid_token(_do)
 
         if not isinstance(resp, dict):
-            self.log.error(f"ltp: unexpected response {resp!r}")
+            self._log_error("ltp", f"unexpected response {resp!r}")
             raise RuntimeError(f"ltp: unexpected response {resp!r}")
 
         if resp.get("status") is False or resp.get("success") is False:
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
             code = resp.get("errorCode") or resp.get("errorcode") or resp.get("code")
-            self.log.error(f"ltp failed: {msg} (code={code})")
-            raise RuntimeError(f"ltp failed: {msg} (code={code})")
+            self._log_error("ltp", msg, code)
+            raise RuntimeError(self._format_error(msg, code))
 
         return resp
     
@@ -236,12 +241,13 @@ class AngelClient:
         def _do(sc): return sc.getCandleData(params)
         resp = self._retry_if_invalid_token(_do)
         if not isinstance(resp, dict):
-            self.log.error(f"candles: unexpected response {resp!r}")
+            self._log_error("candles", f"unexpected response {resp!r}")
             raise RuntimeError(f"candles: unexpected response {resp!r}")
         if resp.get("status") is False or resp.get("success") is False:
             msg  = resp.get("message") or resp.get("statusMessage") or "Unknown error"
             code = resp.get("errorCode") or resp.get("errorcode") or resp.get("code")
-            raise RuntimeError(f"candles failed: {msg} (code={code})")
+            self._log_error("candles", msg, code)
+            raise RuntimeError(self._format_error(msg, code))
         return resp
 
     def place_order_live(self, params: Dict[str, Any]) -> Any:

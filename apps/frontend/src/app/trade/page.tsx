@@ -27,6 +27,10 @@ export default function TradePage() {
     '1d': 'ONE_DAY',
   };
 
+    const [ltpLoading, setLtpLoading] = useState(false);
+    const [candlesLoading, setCandlesLoading] = useState(false);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [positionsLoading, setPositionsLoading] = useState(false);
   const [exchange, setExchange] = useState('NSE');
   const [symbol, setSymbol] = useState('TATAMOTORS');
   const [tf, setTf] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
@@ -37,6 +41,30 @@ export default function TradePage() {
     exchange,
     tradingsymbol: symbol,
   });
+    // Button handlers with loading state
+    async function handleRefreshLTP() {
+      setLtpLoading(true);
+      await refreshLTP();
+      setLtpLoading(false);
+    }
+
+    async function handleRefreshCandles() {
+      setCandlesLoading(true);
+      await refreshCandles();
+      setCandlesLoading(false);
+    }
+
+    async function handleRefreshOrders() {
+      setOrdersLoading(true);
+      await refreshOrders();
+      setOrdersLoading(false);
+    }
+
+    async function handleRefreshPositions() {
+      setPositionsLoading(true);
+      await refreshPositions();
+      setPositionsLoading(false);
+    }
 
   const { data: candles, refresh: refreshCandles } = useCandles({
     exchange,
@@ -241,10 +269,10 @@ export default function TradePage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">LTP</h2>
               <button
-                onClick={refreshLTP}
+                onClick={handleRefreshLTP}
                 className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
               >
-                Get LTP
+                {ltpLoading ? 'Loading...' : 'Get LTP'}
               </button>
             </div>
             <div className="mt-3">
@@ -272,10 +300,10 @@ export default function TradePage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Candles ({tf})</h2>
               <button
-                onClick={refreshCandles}
+                onClick={handleRefreshCandles}
                 className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
               >
-                Get Candles
+                {candlesLoading ? 'Loading...' : 'Get Candles'}
               </button>
             </div>
             <div className="mt-4 h-[380px]">
@@ -301,10 +329,10 @@ export default function TradePage() {
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-semibold">Orders</h3>
               <button
-                onClick={refreshOrders}
+                onClick={handleRefreshOrders}
                 className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
               >
-                Refresh
+                {ordersLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
             <div className="overflow-auto">
@@ -362,10 +390,10 @@ export default function TradePage() {
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-semibold">Positions</h3>
               <button
-                onClick={refreshPositions}
+                onClick={handleRefreshPositions}
                 className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
               >
-                Refresh
+                {positionsLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
             <div className="overflow-auto">
