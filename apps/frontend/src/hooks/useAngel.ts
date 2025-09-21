@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useState } from 'react';
-import { angel, Candle, CandlesRes, LTPRes, LoginRes, Order, PlaceOrderReq, PlaceOrderRes, Position } from '@/lib/angelClient';
+import { angel, Candle, LTPRes, LoginRes, Order, PlaceOrderReq, Position } from '@/lib/angelClient';
 
 export function useAngelLogin() {
   const [status, setStatus] = useState<{connected:boolean; mode:'PAPER'|'LIVE'|'?'}>({ connected:false, mode:'?' });
@@ -75,8 +75,25 @@ export function usePositions() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [error, setError] = useState<string | null>(null);
   const refresh = useCallback(async () => {
-    try { setError(null); setPositions(await angel.positions()); }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
+    try {
+      setError(null);
+      const raw = await angel.positions();
+      // Transform object response to array for UI
+      const arr: Position[] = Object.entries(raw).map(([key, val]) => {
+        const [exchange, symbol, symboltoken] = key.split(":");
+        const pos = val as { qty: number; avgPrice: number };
+        return {
+          symbol: symbol,
+          exchange,
+          symboltoken,
+          qty: pos.qty,
+          avgPrice: pos.avgPrice,
+        };
+      });
+      setPositions(arr);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }, []);
   return { positions, error, refresh };
 }

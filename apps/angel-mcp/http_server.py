@@ -34,11 +34,23 @@ http_app.add_middleware(
     allow_headers=["*"],
 )
 
+# Helper to find symboltoken for a given exchange and tradingsymbol
+def get_symboltoken(exchange, tradingsymbol):
+    scrips = TOOL_MAP["search_scrip"](exchange, tradingsymbol)
+    symboltoken = None
+    if exchange and exchange.lower() == "bse":
+        if scrips and scrips[0].get("symboltoken"):
+            symboltoken = scrips[0]["symboltoken"]
+    else:
+        for scrip in scrips:
+            if scrip.get("tradingsymbol", "").endswith("-EQ"):
+                symboltoken = scrip.get("symboltoken")
+                break
+    return symboltoken
 
 # POST endpoints for state-changing actions
 @http_app.post("/login")
 async def login_endpoint():
-    print("HTTP login request", flush=True)
     return JSONResponse(TOOL_MAP["login"]())
 
 @http_app.post("/logout")
@@ -54,8 +66,16 @@ async def set_mode_endpoint(new_mode: str):
     return JSONResponse(TOOL_MAP["set_mode"](new_mode))
 
 @http_app.post("/place_order")
-async def place_order_endpoint(exchange: str, tradingsymbol: str, transactiontype: str, quantity: int, ordertype: str = "MARKET", price: float = None, token: str = None):
-    return JSONResponse(TOOL_MAP["place_order"](exchange, tradingsymbol, transactiontype, quantity, ordertype, price, token))
+async def place_order_endpoint(request: Request):
+    body = await request.json()
+    exchange = body.get("exchange")
+    tradingsymbol = body.get("tradingsymbol")
+    transactiontype = body.get("transactiontype")
+    quantity = body.get("quantity")
+    ordertype = body.get("ordertype", "MARKET")
+    price = body.get("price")
+    symboltoken = get_symboltoken(exchange, tradingsymbol)
+    return JSONResponse(TOOL_MAP["place_order"](exchange, tradingsymbol, transactiontype, quantity, ordertype, price, symboltoken))
 
 # GET endpoints for read-only actions
 @http_app.get("/ping")
@@ -68,17 +88,7 @@ async def ltp_endpoint(request: Request):
         body = await request.json()
         exchange = body.get("exchange")
         tradingsymbol = body.get("tradingsymbol")
-        # Get symboltoken from search_scrip
-        scrips = TOOL_MAP["search_scrip"](exchange, tradingsymbol)
-        symboltoken = None
-        if exchange and exchange.lower() == "bse":
-            if scrips and scrips[0].get("symboltoken"):
-                symboltoken = scrips[0]["symboltoken"]
-        else:
-            for scrip in scrips:
-                if scrip.get("tradingsymbol", "").endswith("-EQ"):
-                    symboltoken = scrip.get("symboltoken")
-                    break
+        symboltoken = get_symboltoken(exchange, tradingsymbol)
         if not symboltoken:
             return JSONResponse({"error": f"No symboltoken found for {tradingsymbol} on {exchange}"}, status_code=404)
         result = angel_ltp(exchange, tradingsymbol, symboltoken)
@@ -95,17 +105,7 @@ async def candles_endpoint(request: Request):
         interval = body.get("interval")
         from_date = body.get("from_date")
         to_date = body.get("to_date")
-        # Find symboltoken like ltp_endpoint
-        scrips = TOOL_MAP["search_scrip"](exchange, tradingsymbol)
-        symboltoken = None
-        if exchange and exchange.lower() == "bse":
-            if scrips and scrips[0].get("symboltoken"):
-                symboltoken = scrips[0]["symboltoken"]
-        else:
-            for scrip in scrips:
-                if scrip.get("tradingsymbol", "").endswith("-EQ"):
-                    symboltoken = scrip.get("symboltoken")
-                    break
+        symboltoken = get_symboltoken(exchange, tradingsymbol)
         if not symboltoken:
             return JSONResponse({"error": f"No symboltoken found for {tradingsymbol} on {exchange}"}, status_code=404)
         result = TOOL_MAP["candles"](exchange, symboltoken, interval, from_date, to_date)

@@ -93,9 +93,6 @@ export default function CandleCard({ title = 'Candles', candles, symbol, interva
   return (
     <div className="bg-white rounded-xl shadow p-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="font-semibold">
-          {title} {intervalLabel ? `(${intervalLabel})` : ''} {symbol ? `– ${symbol}` : ''}
-        </h2>
         <div className="text-xs text-slate-500">
           Last Close: <b>{lastClose ?? '—'}</b> · Points: {candles.length}
         </div>

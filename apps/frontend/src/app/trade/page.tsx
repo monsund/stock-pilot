@@ -1,10 +1,21 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { useAngelLogin, useLTP, useCandles, useOrders, usePlaceOrder, usePositions } from '@/hooks/useAngel';
+import { useState, useEffect, useRef } from 'react';
+import {
+  useLTP,
+  useCandles,
+  useOrders,
+  usePlaceOrder,
+  usePositions,
+} from '@/hooks/useAngel';
+
 import ExchangeSelect from '@/components/trade/ExchangeSelect';
 import SymbolInput from '@/components/trade/SymbolInput';
 import CandleCard from '@/components/trade/CandleCard';
+import TradeOrderModal from '@/components/trade/TradeOrderModal';
+
+const card =
+  'rounded-2xl border border-gray-200 bg-white/90 backdrop-blur shadow-sm hover:shadow-md transition';
 
 export default function TradePage() {
   // Map UI interval to backend interval
@@ -16,15 +27,17 @@ export default function TradePage() {
     '1d': 'ONE_DAY',
   };
 
-  const [showLtpError, setShowLtpError] = useState(false);
-
   const [exchange, setExchange] = useState('NSE');
   const [symbol, setSymbol] = useState('TATAMOTORS');
-  const [tf, setTf] = useState('15m');
+  const [tf, setTf] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
   const [fromDate, setFromDate] = useState('2025-09-01 09:15');
   const [toDate, setToDate] = useState('2025-09-20 15:30');
 
-  const { data: ltp, error: ltpError, refresh: refreshLTP } = useLTP({ exchange, tradingsymbol: symbol });
+  const { data: ltp, refresh: refreshLTP } = useLTP({
+    exchange,
+    tradingsymbol: symbol,
+  });
+
   const { data: candles, refresh: refreshCandles } = useCandles({
     exchange,
     tradingsymbol: symbol,
@@ -33,227 +46,367 @@ export default function TradePage() {
     to_date: toDate,
   });
 
-
-   // --- client-only auth state to avoid hydration mismatches ---
-  const [authReady, setAuthReady] = useState(false);
-  const [hasToken, setHasToken] = useState(false);
-
-  useEffect(() => {
-    setHasToken(!!localStorage.getItem('angel_token'));
-    setAuthReady(true);
-  }, []);
-
-  const handleLogin = async () => {
-    await login();
-    setHasToken(!!localStorage.getItem('angel_token'));
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('angel_token');
-    setHasToken(false);
-    location.reload();
-  };
-
-  // Show snackbar when ltpError changes
-  useEffect(() => {
-    if (ltpError) setShowLtpError(true);
-  }, [ltpError]);
-
-  const { error: loginError, login } = useAngelLogin();
-
-
   const { orders, refresh: refreshOrders } = useOrders();
   const { positions, refresh: refreshPositions } = usePositions();
-  const { place, submitting, error: orderError } = usePlaceOrder();
+  const { place, submitting } = usePlaceOrder();
 
-  // Helper to extract candle values safely
-  function getCandleValue(candle: unknown, key: string, idx: number) {
-    if (candle && typeof candle === 'object' && !Array.isArray(candle)) {
-      if (key in candle) return (candle as Record<string, number | string>)[key];
-      // Support legacy keys and new meaningful names
-      const legacyMap: Record<string, string> = {
-        t: 'timestamp',
-        o: 'open',
-        h: 'high',
-        l: 'low',
-        c: 'close',
-        v: 'volume',
-      };
-      if (Object.keys(legacyMap).includes(key) && legacyMap[key] in candle) return (candle as Record<string, unknown>)[legacyMap[key]];
-      if (['timestamp','open','high','low','close','volume'].includes(key) && key in candle) return (candle as Record<string, unknown>)[key];
+  // Order modal state
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderForm, setOrderForm] = useState({
+    exchange: 'NSE',
+    tradingsymbol: 'TATAMOTORS',
+    transactiontype: 'BUY' as 'BUY' | 'SELL',
+    quantity: 1,
+    ordertype: 'MARKET',
+    price: '',
+  });
+
+  // Keep modal form in sync with top controls
+  useEffect(() => {
+    setOrderForm((f) => ({ ...f, exchange, tradingsymbol: symbol }));
+  }, [exchange, symbol]);
+
+  // Ref to ensure LTP is fetched only once on mount
+  const didLTPFetch = useRef(false);
+
+  // Initial fetches
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (symbol && exchange && intervalMap[tf] && fromDate && toDate) {
+        refreshCandles();
+      }
+    }, 1000);
+    if (!didLTPFetch.current) {
+      refreshLTP();
+      refreshOrders();
+      refreshPositions();
+      didLTPFetch.current = true;
     }
-    if (Array.isArray(candle)) return candle[idx];
-    return undefined;
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleOrderFieldChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) {
+    const { name, value } = e.target;
+    setOrderForm((f) => ({
+      ...f,
+      [name]:
+        name === 'transactiontype' ? (value as 'BUY' | 'SELL') : value,
+    }));
   }
 
-  const lastClose = useMemo(() => {
-    const last = candles.at(-1);
-    return last ? getCandleValue(last, 'close', 4) || getCandleValue(last, 'c', 4) : undefined;
-  }, [candles]);
-
-
-  async function handlePlace(side: 'BUY' | 'SELL') {
-  await place({ symbol, side, qty: 1, type: 'MKT' });
+  async function handleOrderSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const payload = {
+      exchange: orderForm.exchange,
+      tradingsymbol: orderForm.tradingsymbol,
+      transactiontype: orderForm.transactiontype,
+      quantity: Number(orderForm.quantity),
+      ordertype: orderForm.ordertype,
+      price:
+        orderForm.ordertype === 'LIMIT'
+          ? Number(orderForm.price)
+          : undefined,
+    };
+    await place(payload);
+    setShowOrderModal(false);
     await Promise.all([refreshOrders(), refreshPositions()]);
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {ltpError && showLtpError && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-rose-600 text-white px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 animate-fade-in">
-          <span>Could not fetch LTP. Please verify the stock symbol.</span>
-          <button
-            onClick={() => setShowLtpError(false)}
-            className="ml-2 text-white hover:text-rose-200 text-lg font-bold px-2"
-            aria-label="Close"
-          >×</button>
-        </div>
-      )}
-      <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Trade</h1>
-          <div className="flex items-center gap-2">
-             {authReady && (
-              hasToken ? (
-                <button onClick={handleLogout} className="text-xs px-3 py-2 rounded border">Logout</button>
-              ) : (
-                <button onClick={handleLogin} className="text-xs px-3 py-2 rounded border">Login</button>
-              )
-            )}
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Modal */}
+      <TradeOrderModal
+        show={showOrderModal}
+        submitting={submitting}
+        orderForm={orderForm}
+        onClose={() => setShowOrderModal(false)}
+        onChange={handleOrderFieldChange}
+        onSubmit={handleOrderSubmit}
+      />
+
+      {/* Top bar */}
+      <div className="border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 font-semibold">
+                ₹
+              </span>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                  Trade
+                </h1>
+                <p className="text-xs text-gray-500 hidden sm:block">
+                  Place orders, view LTP, inspect candles, and track
+                  positions.
+                </p>
+              </div>
+            </div>
+            {/* Login/Logout moved to navbar */}
           </div>
-        </header>
+        </div>
+      </div>
 
-        {loginError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">{loginError}</div>}
-        {orderError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">{orderError}</div>}
-
+      {/* Body */}
+      <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
         {/* Controls */}
-        <section className="bg-white rounded-xl shadow p-4 flex flex-wrap items-end gap-3">
-          <ExchangeSelect value={exchange} onChange={setExchange} />
-          <SymbolInput value={symbol} onChange={setSymbol} />
-          <div className="ml-auto flex gap-2">
-            <button onClick={refreshLTP} className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300">LTP</button>
-            <button onClick={refreshCandles} className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300">Candles</button>
-            <button onClick={() => handlePlace('BUY')} disabled={submitting} className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Buy</button>
-            <button onClick={() => handlePlace('SELL')} disabled={submitting} className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50">Sell</button>
+        <section className={`${card} p-4 md:p-5 relative z-10`}>
+          {/* Give the middle controls more room on lg+ screens */}
+          <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1fr_2.4fr_auto]">
+            {/* Left column */}
+            <div className="flex items-end gap-3 min-w-0 w-full max-w-2xl">
+              <div className="flex-1 min-w-0">
+                <ExchangeSelect value={exchange} onChange={setExchange} />
+              </div>
+              <div className="w-3" />
+              <div className="flex-[2] min-w-0">
+                <SymbolInput value={symbol} onChange={setSymbol} />
+              </div>
+            </div>
+
+            {/* Middle column (wrap if tight) */}
+            <div className="flex items-end gap-3 flex-wrap min-w-0">
+              <div className="flex-[1] min-w-[80px] max-w-[100px]">
+                <label className="text-[11px] text-gray-500">Interval</label>
+                <select
+                  value={tf}
+                  onChange={(e) =>
+                    setTf(e.target.value as '1m' | '5m' | '15m' | '1h' | '1d')
+                  }
+                  className="w-full rounded-xl border px-2 py-2 text-sm"
+                >
+                  <option value="1m">1m</option>
+                  <option value="5m">5m</option>
+                  <option value="15m">15m</option>
+                  <option value="1h">1h</option>
+                  <option value="1d">1d</option>
+                </select>
+              </div>
+              <div className="flex-[1] min-w-[180px]">
+                <label className="text-[11px] text-gray-500">
+                  From (YYYY-MM-DD HH:MM)
+                </label>
+                <input
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  placeholder="YYYY-MM-DD HH:MM"
+                  className="w-full rounded-xl border px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex-[1] min-w-[180px]">
+                <label className="text-[11px] text-gray-500">
+                  To (YYYY-MM-DD HH:MM)
+                </label>
+                <input
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  placeholder="YYYY-MM-DD HH:MM"
+                  className="w-full rounded-xl border px-3 py-2 text-sm relative z-10"
+                />
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div className="flex items-end justify-end gap-2 w-full lg:w-auto relative z-0">
+              <button
+                onClick={() => {
+                  setOrderForm((f) => ({ ...f, transactiontype: 'BUY' }));
+                  setShowOrderModal(true);
+                }}
+                disabled={submitting}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+              >
+                Buy
+              </button>
+              <button
+                onClick={() => {
+                  setOrderForm((f) => ({ ...f, transactiontype: 'SELL' }));
+                  setShowOrderModal(true);
+                }}
+                disabled={submitting}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50"
+              >
+                Sell
+              </button>
+            </div>
           </div>
         </section>
 
         {/* Market snapshot */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow p-4">
-            <div className="text-sm text-slate-500">LTP</div>
-            {ltp?.status && ltp?.data ? (
-              <div>
-                <div className="text-2xl font-semibold">{ltp?.data?.ltp}</div>
-                <div className="text-xs text-slate-400 mt-1">{ltp?.data?.tradingsymbol} ({ltp?.data?.exchange})</div>
-                <div className="text-xs text-slate-400 mt-1">Open: {ltp?.data?.open} | High: {ltp?.data?.high} | Low: {ltp?.data?.low} | Close: {ltp?.data?.close}</div>
-              </div>
-            ) : (
-              <div>
-                <div className="text-2xl font-semibold">—</div>
-                <div className="text-xs text-slate-400 mt-1">{symbol}</div>
-              </div>
-            )}
-          </div>
-          <div className="bg-white rounded-xl shadow p-4 md:col-span-2">
-            <div className="text-sm text-slate-500 flex flex-wrap items-center justify-between gap-2">
-              <span>Candles ({tf})</span>
-              <select
-                value={tf}
-                onChange={e => setTf(e.target.value)}
-                className="rounded-lg border px-2 py-1 text-xs"
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LTP */}
+          <div className={`${card} p-5`}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">LTP</h2>
+              <button
+                onClick={refreshLTP}
+                className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
               >
-                <option>1m</option>
-                <option>5m</option>
-                <option>15m</option>
-                <option>1h</option>
-                <option>1d</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <label className="text-xs">From</label>
-                <input type="text" value={fromDate} onChange={e => setFromDate(e.target.value)} placeholder="YYYY-MM-DD HH:MM" className="rounded border px-2 py-1 text-xs w-40" />
-                <label className="text-xs">To</label>
-                <input type="text" value={toDate} onChange={e => setToDate(e.target.value)} placeholder="YYYY-MM-DD HH:MM" className="rounded border px-2 py-1 text-xs w-40" />
-                <span className="text-xs text-slate-400 ml-2">Format: <b>YYYY-MM-DD HH:MM</b></span>
-              </div>
+                Get LTP
+              </button>
             </div>
-            <div className="mt-2 text-sm text-slate-700">
-              {candles.length ? (
-                <div>
-                   <CandleCard
-                      title="Candles"
-                      candles={candles}      // your hook already returns the shown shape
-                      symbol={symbol}
-                      intervalLabel={tf}
-                    />
-                  <div>Last Close: <b>{lastClose}</b></div>
-                  <div className="text-xs text-slate-500">Points: {candles.length}</div>
-                </div>
+            <div className="mt-3">
+              {ltp?.status && ltp?.data ? (
+                <>
+                  <div className="text-3xl font-bold tracking-tight">
+                    {ltp.data.ltp}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {ltp.data.tradingsymbol} ({ltp.data.exchange})
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Open: {ltp.data.open} • High: {ltp.data.high} • Low:{' '}
+                    {ltp.data.low} • Close: {ltp.data.close}
+                  </div>
+                </>
               ) : (
-                <div className="text-slate-400">No candles loaded</div>
+                <div className="text-gray-400">No data. Try “Get LTP”.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Candles */}
+          <div className={`${card} p-5 lg:col-span-2`}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Candles ({tf})</h2>
+              <button
+                onClick={refreshCandles}
+                className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
+              >
+                Get Candles
+              </button>
+            </div>
+            <div className="mt-4 h-[380px]">
+              {candles.length ? (
+                <CandleCard
+                  title=""
+                  candles={candles}
+                  symbol={symbol}
+                  intervalLabel={tf}
+                />
+              ) : (
+                <div className="grid h-full place-items-center text-gray-400 text-sm">
+                  No candles yet. Click “Get Candles”.
+                </div>
               )}
             </div>
           </div>
         </section>
 
         {/* Orders & Positions */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl shadow p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold">Orders</h2>
-              <button onClick={refreshOrders} className="text-xs px-2 py-1 rounded border">Refresh</button>
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`${card} p-5`}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold">Orders</h3>
+              <button
+                onClick={refreshOrders}
+                className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
+              >
+                Refresh
+              </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-slate-500">
-                  <tr><th>ID</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Status</th><th>Avg Px</th><th>Time</th></tr>
+                <thead className="text-left text-gray-500">
+                  <tr className="border-b">
+                    <th className="py-2 pr-3">ID</th>
+                    <th className="py-2 pr-3">Mode</th>
+                    <th className="py-2 pr-3">Exchange</th>
+                    <th className="py-2 pr-3">Symbol</th>
+                    <th className="py-2 pr-3">Token</th>
+                    <th className="py-2 pr-3">Side</th>
+                    <th className="py-2 pr-3">Order Type</th>
+                    <th className="py-2 pr-3">Qty</th>
+                    <th className="py-2 pr-3">Price</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Time</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {orders.map(o => (
-                    <tr key={o.orderId} className="border-t">
-                      <td className="py-1 pr-3">{o.orderId}</td>
-                      <td className="py-1 pr-3">{o.symbol}</td>
-                      <td className="py-1 pr-3">{o.side}</td>
-                      <td className="py-1 pr-3">{o.qty}</td>
-                      <td className="py-1 pr-3">{o.status}</td>
-                      <td className="py-1 pr-3">{o.avgPrice ?? '—'}</td>
-                      <td className="py-1 pr-3">{o.time}</td>
+                  {orders.map((o) => (
+                    <tr key={o.orderid} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-mono text-[11px]">
+                        {o.orderid}
+                      </td>
+                      <td className="py-2 pr-3">{o.mode}</td>
+                      <td className="py-2 pr-3">{o.exchange}</td>
+                      <td className="py-2 pr-3">{o.tradingsymbol}</td>
+                      <td className="py-2 pr-3">{o.symboltoken}</td>
+                      <td className="py-2 pr-3">{o.transactiontype}</td>
+                      <td className="py-2 pr-3">{o.ordertype}</td>
+                      <td className="py-2 pr-3">{o.quantity}</td>
+                      <td className="py-2 pr-3">{o.price ?? '—'}</td>
+                      <td className="py-2 pr-3">{o.status}</td>
+                      <td className="py-2 pr-3">
+                        {o.timestamp
+                          ? new Date(o.timestamp * 1000).toLocaleString()
+                          : '—'}
+                      </td>
                     </tr>
                   ))}
-                  {!orders.length && <tr><td colSpan={7} className="py-2 text-slate-400">No orders yet</td></tr>}
+                  {!orders.length && (
+                    <tr>
+                      <td className="py-6 text-center text-gray-400" colSpan={11}>
+                        No orders yet
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold">Positions</h2>
-              <button onClick={refreshPositions} className="text-xs px-2 py-1 rounded border">Refresh</button>
+          <div className={`${card} p-5`}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold">Positions</h3>
+              <button
+                onClick={refreshPositions}
+                className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
+              >
+                Refresh
+              </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-slate-500">
-                  <tr><th>Symbol</th><th>Qty</th><th>Avg Px</th><th>PNL</th></tr>
+                <thead className="text-left text-gray-500">
+                  <tr className="border-b">
+                    <th className="py-2 pr-3">Exchange</th>
+                    <th className="py-2 pr-3">Symbol</th>
+                    <th className="py-2 pr-3">Qty</th>
+                    <th className="py-2 pr-3">Avg Px</th>
+                    <th className="py-2 pr-3">PNL</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {positions.map(p => (
-                    <tr key={p.symbol} className="border-t">
-                      <td className="py-1 pr-3">{p.symbol}</td>
-                      <td className="py-1 pr-3">{p.qty}</td>
-                      <td className="py-1 pr-3">{p.avgPrice}</td>
-                      <td className="py-1 pr-3">{p.pnl ?? '—'}</td>
+                  {positions
+                    .filter((p) => p.qty > 0)
+                    .map((p) => (
+                      <tr
+                        key={`${p.exchange}:${p.symbol}:${p.symboltoken}`}
+                        className="border-b last:border-0"
+                      >
+                        <td className="py-2 pr-3">{p.exchange}</td>
+                        <td className="py-2 pr-3">{p.symbol}</td>
+                        <td className="py-2 pr-3">{p.qty}</td>
+                        <td className="py-2 pr-3">{p.avgPrice}</td>
+                        <td className="py-2 pr-3">{p.pnl ?? '—'}</td>
+                      </tr>
+                    ))}
+                  {!positions.length && (
+                    <tr>
+                      <td className="py-6 text-center text-gray-400" colSpan={5}>
+                        No positions
+                      </td>
                     </tr>
-                  ))}
-                  {!positions.length && <tr><td colSpan={4} className="py-2 text-slate-400">No positions</td></tr>}
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </section>
       </div>
-    </div>
     </div>
   );
 }
