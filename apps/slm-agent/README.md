@@ -4,9 +4,32 @@
 
 SLM Agent is a Node.js/TypeScript service for orchestrating stock-pilot tools and agents. It exposes endpoints for agent queries and integrates with other microservices like news-mcp (Google News search) and mcp-angel. This service orchestrates tools and agents for stock-pilot using Node.js and TypeScript.
 
+---
 
+## Cloudflare Workers (Edge) Deployment
 
+SLM Agent can be deployed to Cloudflare Workers for fast, scalable edge inference. See `README.workers.md` for full setup, configuration, and troubleshooting.
 
+- **Live URL (prod):** https://slm-agent.stockpilot.workers.dev
+- **Runtime:** Cloudflare Workers (Fetch API) with `nodejs_compat`
+- **Router:** Hono (`src/worker.ts`)
+- **LLM at edge:** Groq (recommended; Ollama is Node-only)
+- **Endpoints:**
+  - `GET  /health` — Health check
+  - `POST /analyze` — `{ "query": "Tata Motors" }`
+  - `POST /paper/orders` — `{ symbol:{exchange,symbol}, side:BUY|SELL, qty:number, type:"MARKET" }`
+  - `GET  /paper/orders` — List orders
+  - `GET  /paper/positions` — List positions
+  - `GET  /market/ltp?exchange=NSE&symbol=RELIANCE` — Market price
+  - `GET  /news/search?query=...` — News search
+
+**See `README.workers.md` for:**
+- Required environment variables and secrets
+- Wrangler and Cloudflare setup
+- Local development and deployment commands
+- Troubleshooting, FAQ, and best practices
+
+---
 
 ## LLM Model Setup
 
@@ -15,10 +38,8 @@ SLM Agent supports both local Ollama and Groq (OpenAI-compatible) models for LLM
 ### Using Groq
 
 Set the following environment variables in your `.env` file:
-
 - `GROQ_API_KEY` — Your Groq API key
 - `GROQ_MODEL_Llama` — Model name (default: `llama-3.1-8b-instant`)
-
 Groq will be used automatically if `GROQ_API_KEY` is set.
 
 ### Using Ollama (local)

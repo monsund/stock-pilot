@@ -14,8 +14,15 @@ export async function getLtp(symbol: SymbolT): Promise<number> {
       url.searchParams.set("exchange", symbol.exchange);
       url.searchParams.set("symbol", symbol.symbol);
       const r = await fetch(url);
-      const data = await r.json().catch(() => null);
-      const n = Number(data?.ltp ?? data?.price ?? data);
+      // Explicitly type the response for type safety
+      type LtpResponse = { ltp?: number; price?: number } | number;
+      const raw = await r.json().catch(() => null);
+      const data = raw as LtpResponse;
+      const n = Number(
+        typeof data === "object" && data !== null
+          ? ("ltp" in data ? data.ltp : ("price" in data ? data.price : undefined))
+          : data
+      );
       if (Number.isFinite(n)) return n;
     } catch {
       /* fall through */

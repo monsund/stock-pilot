@@ -148,13 +148,16 @@ def health():
 async def http_news_search(payload: NewsSearchInput = Body(...)):
     import json
     try:
+        print(f"[news-mcp] news.search called with payload: {payload}", flush=True)
         tool_result = await news_search.run({"payload": payload.model_dump()})
         # Extract JSON string from first TextContent object
         if not tool_result.content or len(tool_result.content) == 0:
             return {"articles": []}
         articles_json = tool_result.content[0].text
         articles = json.loads(articles_json)
-        return {"articles": articles}
+        print(f"[news-mcp] news.search returning articles {articles}", flush=True)
+        print(f"[news-mcp] news.search returning length: {len(articles)} articles", flush=True)
+        return articles
     except Exception as e:
         print(f"[news-mcp] fatal error: {e}\n{traceback.format_exc()}", flush=True)
         raise HTTPException(status_code=500, detail=f"news.search failed: {e}")

@@ -29,7 +29,6 @@ export async function chat(messages: ChatMessage[]): Promise<{ content: string }
       messages,
       temperature: 0.3,
     });
-    console.log('qaz----res--Groq', res);
     return { content: res.choices?.[0]?.message?.content ?? '' };
   }
 
@@ -40,6 +39,5 @@ export async function chat(messages: ChatMessage[]): Promise<{ content: string }
     messages,
     options: { temperature: 0.3 },
   });
-  console.log('qaz----res--Ollama', res);
   return { content: res.message?.content ?? '' };
 }

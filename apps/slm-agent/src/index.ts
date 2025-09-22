@@ -24,13 +24,13 @@ app.post('/analyze', async (req, res) => {
       return res.status(400).json({ error: 'Body must include { query: string }' });
     }
     logger.info({ query }, 'qaz---Received /analyze request with query');
-      const agent = new StockNewsAgent({
-        slm: OllamaAdapter,
-        maxSteps: 6,
-        postNewsNudge: true,
-        systemPrompt: SYSTEM_PROMPT,
-        reactInstructions: REACT_INSTRUCTIONS_AND_FEWSHOT
-      });
+    const agent = new StockNewsAgent({
+      slm: OllamaAdapter,
+      maxSteps: 6,
+      postNewsNudge: true,
+      systemPrompt: SYSTEM_PROMPT,
+      reactInstructions: REACT_INSTRUCTIONS_AND_FEWSHOT
+    });
     const result = await agent.run(query);
     let analyses = toAnalyses(query, result);
 
