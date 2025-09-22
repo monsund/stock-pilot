@@ -1,5 +1,7 @@
-import { randomUUID } from "node:crypto";
+// import { randomUUID } from "node:crypto";
 import type { SymbolT } from "../agents/transform.js";
+
+const randomUUID = () => crypto.randomUUID();
 
 export type PaperOrder = {
   id: string;
