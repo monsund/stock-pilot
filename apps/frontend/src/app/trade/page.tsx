@@ -13,6 +13,7 @@ import ExchangeSelect from '@/components/trade/ExchangeSelect';
 import SymbolInput from '@/components/trade/SymbolInput';
 import CandleCard from '@/components/trade/CandleCard';
 import TradeOrderModal from '@/components/trade/TradeOrderModal';
+import LtpCard from '@/components/trade/LtpCard';
 
 const card =
   'rounded-2xl border border-gray-200 bg-white/90 backdrop-blur shadow-sm hover:shadow-md transition';
@@ -47,7 +48,7 @@ export default function TradePage() {
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [positionsLoading, setPositionsLoading] = useState(false);
   const [exchange, setExchange] = useState('NSE');
-  const [symbol, setSymbol] = useState('TATAMOTORS');
+  const [symbol, setSymbol] = useState('TATAPOWER');
   const [tf, setTf] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
 
   const [fromDate, setFromDate] = useState(getMonthStart());
@@ -183,8 +184,9 @@ export default function TradePage() {
                   Trade
                 </h1>
                 <p className="text-xs text-gray-500 hidden sm:block">
-                  Place orders, view LTP, inspect candles, and track
-                  positions.
+                  <span className="text-sm text-gray-500 font-normal">
+                    Place orders (<span className="font-semibold text-emerald-700">paper trading</span>), track positions (<span className="font-semibold text-emerald-700">paper trading</span>), view LTP (<span className="font-semibold text-indigo-700">real time</span>), and inspect candles (<span className="font-semibold text-indigo-700">real time</span>).
+                  </span>
                 </p>
               </div>
             </div>
@@ -281,7 +283,26 @@ export default function TradePage() {
         {/* Market snapshot */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LTP */}
-          <div className={`${card} p-5`}>
+          <LtpCard
+            data={
+              ltp?.status && ltp?.data
+                ? {
+                    ltp: ltp.data.ltp,
+                    exchange: ltp.data.exchange,
+                    tradingsymbol: ltp.data.tradingsymbol,
+                    open: ltp.data.open,
+                    high: ltp.data.high,
+                    low: ltp.data.low,
+                    close: ltp.data.close,
+                  }
+                : undefined
+            }
+            loading={ltpLoading}
+            onRefresh={handleRefreshLTP}
+            lastUpdatedISO={new Date().toISOString()}
+            candles={candles?.length ? candles : []}
+          />
+          {/* <div className={`${card} p-5`}>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">LTP</h2>
               <button
@@ -311,7 +332,7 @@ export default function TradePage() {
                 <div className="text-gray-400">No data. Try “Get LTP”.</div>
               )}
             </div>
-          </div>
+          </div> */}
 
           {/* Candles */}
           <div className={`${card} p-5 lg:col-span-2`}>

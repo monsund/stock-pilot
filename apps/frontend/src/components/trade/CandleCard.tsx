@@ -91,15 +91,15 @@ export default function CandleCard({ title = 'Candles', candles, symbol, interva
   );
 
   return (
-    <div className="bg-white rounded-xl shadow p-4">
+    <div className="bg-white rounded-xl shadow p-4 w-full">
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs text-slate-500">
           Last Close: <b>{lastClose ?? '—'}</b> · Points: {candles.length}
         </div>
       </div>
-      <div className="h-80">
+      <div className="h-80 w-full">
         {candles.length ? (
-          <ReactChart type="candlestick" data={data} options={options} />
+          <ReactChart type="candlestick" data={data} options={options} style={{ width: '100%' }} />
         ) : (
           <div className="text-slate-400 text-sm">No candles</div>
         )}
