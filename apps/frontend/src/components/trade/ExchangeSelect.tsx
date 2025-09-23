@@ -10,7 +10,7 @@ export default function ExchangeSelect({ value, onChange }: { value: string; onC
   return (
     <div className="flex flex-col">
       <label className="text-xs text-slate-500">Exchange</label>
-      <select value={value} onChange={e => onChange(e.target.value)} className="rounded-lg border px-3 py-2 w-32">
+      <select value={value} onChange={e => onChange(e.target.value)} className="rounded-lg border px-3 py-2 w-full sm:w-32">
         {EXCHANGES.map(ex => (
           <option key={ex.value} value={ex.value}>{ex.label}</option>
         ))}

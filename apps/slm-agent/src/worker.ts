@@ -55,37 +55,6 @@ app.post('/analyze', async (c) => {
   }
 })
 
-app.post('/paper/orders', async (c) => {
-  const { symbol, side, qty, type = 'MARKET' } = await c.req.json().catch(() => ({}))
-  if (!symbol?.exchange || !symbol?.symbol) return c.json({ error: 'symbol {exchange, symbol} required' }, 400)
-  if (side !== 'BUY' && side !== 'SELL') return c.json({ error: 'side must be BUY or SELL' }, 400)
-  if (type !== 'MARKET') return c.json({ error: 'only MARKET supported' }, 400)
-  const size = Math.max(1, Number(qty) || 1)
-  const price = await getLtp(symbol)
-  const order = placeMarket(symbol, side, size, price)
-  return c.json({ order }, 201)
-})
-
-app.get('/paper/orders', (_c) => _c.json({ orders: listOrders() }))
-app.get('/paper/positions', (_c) => _c.json({ positions: listPositions() }))
-
-app.get('/market/ltp', async (c) => {
-  const exchange = c.req.query('exchange') || ''
-  const symbol = c.req.query('symbol') || ''
-  if (!exchange || !symbol) return c.json({ error: 'exchange & symbol required' }, 400)
-  const ltp = await getLtp({ exchange: exchange as any, symbol })
-  return c.json({ ltp })
-})
-
-app.get('/news/search', async (c) => {
-  const base = c.env.NEWS_MCP_BASE
-  if (!base) return c.json({ error: 'NEWS_MCP_BASE not set' }, 501)
-  const query = c.req.query('query') || ''
-  if (!query) return c.json({ error: 'query required' }, 400)
-  const articles = await callTool<any, any[]>(base, 'news.search', { query, lookback: '14d', locale: 'en-IN' })
-  return c.json({ articles })
-})
-
 // Export Worker and inject env → process.env so existing modules can read it
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {

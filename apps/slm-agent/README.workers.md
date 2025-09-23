@@ -14,13 +14,7 @@ This guide documents **Cloudflare Workers (edge) deployment** for `slm-agent`.
 - **Endpoints:**
   - `GET  /health` — Health check
   - `POST /analyze` — `{ "query": "Tata Motors" }`
-  - `POST /paper/orders` — `{ symbol:{exchange,symbol}, side:BUY|SELL, qty:number, type:"MARKET" }`
-  - `GET  /paper/orders` — List orders
-  - `GET  /paper/positions` — List positions
-  - `GET  /market/ltp?exchange=NSE&symbol=RELIANCE` — Market price
-  - `GET  /news/search?query=...` — News search
-  - *(optional)* `GET /` — Friendly root route
-
+  
 ---
 
 ## Prerequisites

@@ -17,12 +17,7 @@ SLM Agent can be deployed to Cloudflare Workers for fast, scalable edge inferenc
 - **Endpoints:**
   - `GET  /health` — Health check
   - `POST /analyze` — `{ "query": "Tata Motors" }`
-  - `POST /paper/orders` — `{ symbol:{exchange,symbol}, side:BUY|SELL, qty:number, type:"MARKET" }`
-  - `GET  /paper/orders` — List orders
-  - `GET  /paper/positions` — List positions
-  - `GET  /market/ltp?exchange=NSE&symbol=RELIANCE` — Market price
-  - `GET  /news/search?query=...` — News search
-
+  
 **See `README.workers.md` for:**
 - Required environment variables and secrets
 - Wrangler and Cloudflare setup
