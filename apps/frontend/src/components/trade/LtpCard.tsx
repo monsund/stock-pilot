@@ -143,7 +143,7 @@ export default function LtpCard({
           {/* Timestamp */}
           <div className="mt-4 text-[11px] text-gray-400">
             {lastUpdatedISO
-              ? `Last updated: ${new Date(lastUpdatedISO).toLocaleString()}`
+              ? `Last updated: ${new Date(lastUpdatedISO).toISOString().replace('T', ' ').slice(0, 19)}`
               : 'Last updated: just now'}
           </div>
         </>

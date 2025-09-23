@@ -3,7 +3,6 @@
 import React, { useMemo } from 'react';
 import '@/lib/chart'; // side-effect: registers scales/controllers
 /// <reference types="chartjs-chart-financial" />
-import { ChartJS } from '@/lib/chart'; 
 import type { ChartData, ChartOptions } from 'chart.js';
 import { Chart as ReactChart } from 'react-chartjs-2';
 
@@ -97,9 +96,31 @@ export default function CandleCard({ title = 'Candles', candles, symbol, interva
           Last Close: <b>{lastClose ?? '—'}</b> · Points: {candles.length}
         </div>
       </div>
-      <div className="h-80 w-full">
-        {candles.length ? (
-          <ReactChart type="candlestick" data={data} options={options} style={{ width: '100%' }} />
+      <div className="h-80 w-full flex items-center justify-center">
+        {candles.length > 1 ? (
+          <ReactChart type="candlestick" data={data} options={options} />
+        ) : candles.length === 1 ? (
+          <div className="flex flex-col items-center justify-center h-full w-full">
+            <div className="grid grid-cols-2 gap-4 w-full max-w-xs mb-2">
+              <div className="rounded-xl bg-emerald-50 px-4 py-3 text-center">
+                <div className="text-xs text-gray-500">Open</div>
+                <div className="text-lg font-semibold text-emerald-700">₹{candles[0].open}</div>
+              </div>
+              <div className="rounded-xl bg-rose-50 px-4 py-3 text-center">
+                <div className="text-xs text-gray-500">Close</div>
+                <div className="text-lg font-semibold text-rose-700">₹{candles[0].close}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-4 py-3 text-center">
+                <div className="text-xs text-gray-500">High</div>
+                <div className="text-lg font-semibold text-gray-700">₹{candles[0].high}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-4 py-3 text-center">
+                <div className="text-xs text-gray-500">Low</div>
+                <div className="text-lg font-semibold text-gray-700">₹{candles[0].low}</div>
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-slate-500">Volume: <span className="font-semibold">{candles[0].volume ?? '—'}</span></div>
+          </div>
         ) : (
           <div className="text-slate-400 text-sm">No candles</div>
         )}

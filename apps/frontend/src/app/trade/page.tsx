@@ -90,6 +90,7 @@ export default function TradePage() {
     from_date: fromDate,
     to_date: toDate,
   });
+  console.log('qaz---candles',  candles);
 
   const { orders, refresh: refreshOrders } = useOrders();
   const { positions, refresh: refreshPositions } = usePositions();
@@ -302,37 +303,6 @@ export default function TradePage() {
             lastUpdatedISO={new Date().toISOString()}
             candles={candles?.length ? candles : []}
           />
-          {/* <div className={`${card} p-5`}>
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">LTP</h2>
-              <button
-                onClick={handleRefreshLTP}
-                className="rounded-xl border px-3 py-1.5 text-xs hover:bg-gray-50"
-              >
-                {ltpLoading ? 'Loading...' : 'Get LTP'}
-              </button>
-            </div>
-            <div className="mt-3 min-h-[60px] flex items-center justify-center">
-              {ltpLoading ? (
-                <span className="animate-spin h-6 w-6 border-4 border-indigo-300 border-t-indigo-600 rounded-full inline-block" />
-              ) : ltp?.status && ltp?.data ? (
-                <>
-                  <div className="text-3xl font-bold tracking-tight">
-                    {ltp.data.ltp}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    {ltp.data.tradingsymbol} ({ltp.data.exchange})
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Open: {ltp.data.open} • High: {ltp.data.high} • Low:{' '}
-                    {ltp.data.low} • Close: {ltp.data.close}
-                  </div>
-                </>
-              ) : (
-                <div className="text-gray-400">No data. Try “Get LTP”.</div>
-              )}
-            </div>
-          </div> */}
 
           {/* Candles */}
           <div className={`${card} p-5 lg:col-span-2`}>
