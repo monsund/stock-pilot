@@ -17,6 +17,21 @@ import TradeOrderModal from '@/components/trade/TradeOrderModal';
 const card =
   'rounded-2xl border border-gray-200 bg-white/90 backdrop-blur shadow-sm hover:shadow-md transition';
 
+function getMonthStart() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01 09:15`;
+}
+
+function getNowDateTime() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
 export default function TradePage() {
   // Map UI interval to backend interval
   const intervalMap: Record<string, string> = {
@@ -34,37 +49,38 @@ export default function TradePage() {
   const [exchange, setExchange] = useState('NSE');
   const [symbol, setSymbol] = useState('TATAMOTORS');
   const [tf, setTf] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
-  const [fromDate, setFromDate] = useState('2025-09-01 09:15');
-  const [toDate, setToDate] = useState('2025-09-20 15:30');
+
+  const [fromDate, setFromDate] = useState(getMonthStart());
+  const [toDate, setToDate] = useState(getNowDateTime());
 
   const { data: ltp, refresh: refreshLTP } = useLTP({
     exchange,
     tradingsymbol: symbol,
   });
-    // Button handlers with loading state
-    async function handleRefreshLTP() {
-      setLtpLoading(true);
-      await refreshLTP();
-      setLtpLoading(false);
-    }
+  // Button handlers with loading state
+  async function handleRefreshLTP() {
+    setLtpLoading(true);
+    await refreshLTP();
+    setLtpLoading(false);
+  }
 
-    async function handleRefreshCandles() {
-      setCandlesLoading(true);
-      await refreshCandles();
-      setCandlesLoading(false);
-    }
+  async function handleRefreshCandles() {
+    setCandlesLoading(true);
+    await refreshCandles();
+    setCandlesLoading(false);
+  }
 
-    async function handleRefreshOrders() {
-      setOrdersLoading(true);
-      await refreshOrders();
-      setOrdersLoading(false);
-    }
+  async function handleRefreshOrders() {
+    setOrdersLoading(true);
+    await refreshOrders();
+    setOrdersLoading(false);
+  }
 
-    async function handleRefreshPositions() {
-      setPositionsLoading(true);
-      await refreshPositions();
-      setPositionsLoading(false);
-    }
+  async function handleRefreshPositions() {
+    setPositionsLoading(true);
+    await refreshPositions();
+    setPositionsLoading(false);
+  }
 
   const { data: candles, refresh: refreshCandles } = useCandles({
     exchange,
@@ -101,13 +117,13 @@ export default function TradePage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (symbol && exchange && intervalMap[tf] && fromDate && toDate) {
-        refreshCandles();
+        handleRefreshCandles();
       }
     }, 1000);
     if (!didLTPFetch.current) {
-      refreshLTP();
-      refreshOrders();
-      refreshPositions();
+      handleRefreshLTP();
+      handleRefreshOrders();
+      handleRefreshPositions();
       didLTPFetch.current = true;
     }
     return () => clearTimeout(timer);
@@ -214,23 +230,23 @@ export default function TradePage() {
               </div>
               <div className="flex-[1] min-w-[180px]">
                 <label className="text-[11px] text-gray-500">
-                  From (YYYY-MM-DD HH:MM)
+                  From (date & time)
                 </label>
                 <input
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  placeholder="YYYY-MM-DD HH:MM"
+                  type="datetime-local"
+                  value={fromDate.replace(' ', 'T')}
+                  onChange={(e) => setFromDate(e.target.value.replace('T', ' '))}
                   className="w-full rounded-xl border px-3 py-2 text-sm"
                 />
               </div>
               <div className="flex-[1] min-w-[180px]">
                 <label className="text-[11px] text-gray-500">
-                  To (YYYY-MM-DD HH:MM)
+                  To (date & time)
                 </label>
                 <input
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  placeholder="YYYY-MM-DD HH:MM"
+                  type="datetime-local"
+                  value={toDate.replace(' ', 'T')}
+                  onChange={(e) => setToDate(e.target.value.replace('T', ' '))}
                   className="w-full rounded-xl border px-3 py-2 text-sm relative z-10"
                 />
               </div>
@@ -275,8 +291,10 @@ export default function TradePage() {
                 {ltpLoading ? 'Loading...' : 'Get LTP'}
               </button>
             </div>
-            <div className="mt-3">
-              {ltp?.status && ltp?.data ? (
+            <div className="mt-3 min-h-[60px] flex items-center justify-center">
+              {ltpLoading ? (
+                <span className="animate-spin h-6 w-6 border-4 border-indigo-300 border-t-indigo-600 rounded-full inline-block" />
+              ) : ltp?.status && ltp?.data ? (
                 <>
                   <div className="text-3xl font-bold tracking-tight">
                     {ltp.data.ltp}
@@ -306,8 +324,10 @@ export default function TradePage() {
                 {candlesLoading ? 'Loading...' : 'Get Candles'}
               </button>
             </div>
-            <div className="mt-4 h-[380px]">
-              {candles.length ? (
+            <div className="mt-4 h-[380px] flex items-center justify-center">
+              {candlesLoading ? (
+                <span className="animate-spin h-8 w-8 border-4 border-indigo-300 border-t-indigo-600 rounded-full inline-block" />
+              ) : candles.length ? (
                 <CandleCard
                   title=""
                   candles={candles}
@@ -335,54 +355,58 @@ export default function TradePage() {
                 {ordersLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-gray-500">
-                  <tr className="border-b">
-                    <th className="py-2 pr-3">ID</th>
-                    <th className="py-2 pr-3">Mode</th>
-                    <th className="py-2 pr-3">Exchange</th>
-                    <th className="py-2 pr-3">Symbol</th>
-                    <th className="py-2 pr-3">Token</th>
-                    <th className="py-2 pr-3">Side</th>
-                    <th className="py-2 pr-3">Order Type</th>
-                    <th className="py-2 pr-3">Qty</th>
-                    <th className="py-2 pr-3">Price</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.orderid} className="border-b last:border-0">
-                      <td className="py-2 pr-3 font-mono text-[11px]">
-                        {o.orderid}
-                      </td>
-                      <td className="py-2 pr-3">{o.mode}</td>
-                      <td className="py-2 pr-3">{o.exchange}</td>
-                      <td className="py-2 pr-3">{o.tradingsymbol}</td>
-                      <td className="py-2 pr-3">{o.symboltoken}</td>
-                      <td className="py-2 pr-3">{o.transactiontype}</td>
-                      <td className="py-2 pr-3">{o.ordertype}</td>
-                      <td className="py-2 pr-3">{o.quantity}</td>
-                      <td className="py-2 pr-3">{o.price ?? '—'}</td>
-                      <td className="py-2 pr-3">{o.status}</td>
-                      <td className="py-2 pr-3">
-                        {o.timestamp
-                          ? new Date(o.timestamp * 1000).toLocaleString()
-                          : '—'}
-                      </td>
+            <div className="overflow-auto min-h-[60px] flex items-center justify-center">
+              {ordersLoading ? (
+                <span className="animate-spin h-6 w-6 border-4 border-indigo-300 border-t-indigo-600 rounded-full inline-block" />
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-gray-500">
+                    <tr className="border-b">
+                      <th className="py-2 pr-3">ID</th>
+                      <th className="py-2 pr-3">Mode</th>
+                      <th className="py-2 pr-3">Exchange</th>
+                      <th className="py-2 pr-3">Symbol</th>
+                      <th className="py-2 pr-3">Token</th>
+                      <th className="py-2 pr-3">Side</th>
+                      <th className="py-2 pr-3">Order Type</th>
+                      <th className="py-2 pr-3">Qty</th>
+                      <th className="py-2 pr-3">Price</th>
+                      <th className="py-2 pr-3">Status</th>
+                      <th className="py-2 pr-3">Time</th>
                     </tr>
-                  ))}
-                  {!orders.length && (
-                    <tr>
-                      <td className="py-6 text-center text-gray-400" colSpan={11}>
-                        No orders yet
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr key={o.orderid} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-mono text-[11px]">
+                          {o.orderid}
+                        </td>
+                        <td className="py-2 pr-3">{o.mode}</td>
+                        <td className="py-2 pr-3">{o.exchange}</td>
+                        <td className="py-2 pr-3">{o.tradingsymbol}</td>
+                        <td className="py-2 pr-3">{o.symboltoken}</td>
+                        <td className="py-2 pr-3">{o.transactiontype}</td>
+                        <td className="py-2 pr-3">{o.ordertype}</td>
+                        <td className="py-2 pr-3">{o.quantity}</td>
+                        <td className="py-2 pr-3">{o.price ?? '—'}</td>
+                        <td className="py-2 pr-3">{o.status}</td>
+                        <td className="py-2 pr-3">
+                          {o.timestamp
+                            ? new Date(o.timestamp * 1000).toLocaleString()
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {!orders.length && (
+                      <tr>
+                        <td className="py-6 text-center text-gray-400" colSpan={11}>
+                          No orders yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
 
@@ -396,41 +420,45 @@ export default function TradePage() {
                 {positionsLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-gray-500">
-                  <tr className="border-b">
-                    <th className="py-2 pr-3">Exchange</th>
-                    <th className="py-2 pr-3">Symbol</th>
-                    <th className="py-2 pr-3">Qty</th>
-                    <th className="py-2 pr-3">Avg Px</th>
-                    <th className="py-2 pr-3">PNL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {positions
-                    .filter((p) => p.qty > 0)
-                    .map((p) => (
-                      <tr
-                        key={`${p.exchange}:${p.symbol}:${p.symboltoken}`}
-                        className="border-b last:border-0"
-                      >
-                        <td className="py-2 pr-3">{p.exchange}</td>
-                        <td className="py-2 pr-3">{p.symbol}</td>
-                        <td className="py-2 pr-3">{p.qty}</td>
-                        <td className="py-2 pr-3">{p.avgPrice}</td>
-                        <td className="py-2 pr-3">{p.pnl ?? '—'}</td>
-                      </tr>
-                    ))}
-                  {!positions.length && (
-                    <tr>
-                      <td className="py-6 text-center text-gray-400" colSpan={5}>
-                        No positions
-                      </td>
+            <div className="overflow-auto min-h-[60px] flex items-center justify-center">
+              {positionsLoading ? (
+                <span className="animate-spin h-6 w-6 border-4 border-indigo-300 border-t-indigo-600 rounded-full inline-block" />
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-gray-500">
+                    <tr className="border-b">
+                      <th className="py-2 pr-3">Exchange</th>
+                      <th className="py-2 pr-3">Symbol</th>
+                      <th className="py-2 pr-3">Qty</th>
+                      <th className="py-2 pr-3">Avg Px</th>
+                      <th className="py-2 pr-3">PNL</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {positions
+                      .filter((p) => p.qty > 0)
+                      .map((p) => (
+                        <tr
+                          key={`${p.exchange}:${p.symbol}:${p.symboltoken}`}
+                          className="border-b last:border-0"
+                        >
+                          <td className="py-2 pr-3">{p.exchange}</td>
+                          <td className="py-2 pr-3">{p.symbol}</td>
+                          <td className="py-2 pr-3">{p.qty}</td>
+                          <td className="py-2 pr-3">{p.avgPrice}</td>
+                          <td className="py-2 pr-3">{p.pnl ?? '—'}</td>
+                        </tr>
+                      ))}
+                    {!positions.length && (
+                      <tr>
+                        <td className="py-6 text-center text-gray-400" colSpan={5}>
+                          No positions
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </section>
