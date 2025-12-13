@@ -115,14 +115,6 @@ export default function NewsSearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once
 
-  // Run search when topic changes due to recent selection
-  useEffect(() => {
-    if (!showRecent && topic && topic !== initialQ) {
-      doSearch(topic);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topic, showRecent]);
-
   const confidenceBarWidth = useMemo(() => `${toPct(analysis?.confidence)}%`, [analysis?.confidence]);
 
   const clearAll = useCallback(() => {
@@ -133,6 +125,12 @@ export default function NewsSearchPage() {
     router.replace('/chat', { scroll: false });
     inputRef.current?.focus();
   }, [router]);
+
+  const cancelSearch = useCallback(() => {
+    cancelRef.current?.cancel('User cancelled search');
+    setLoading(false);
+    setShowRecent(false);
+  }, []);
 
   const doSearch = useCallback(async (query: string) => {
     const q = query.trim();
@@ -234,6 +232,15 @@ export default function NewsSearchPage() {
             >
               {loading ? 'Searching…' : 'Search'}
             </button>
+            {loading && (
+              <button
+                type="button"
+                onClick={cancelSearch}
+                className="inline-flex items-center justify-center h-10 px-4 ml-2 rounded-2xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            )}
 
             {/* Recent dropdown */}
             {showRecent && recent.length > 0 && (
@@ -289,7 +296,7 @@ export default function NewsSearchPage() {
                 {['Tata Motors', 'Reliance', 'Tata Power', 'Adani Ports'].map((ex) => (
                   <button
                     key={ex}
-                    onClick={() => { setTopic(ex); doSearch(ex); }}
+                    onClick={() => { setTopic(ex); }}
                     className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50"
                   >
                     {ex}
