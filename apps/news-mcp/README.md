@@ -30,7 +30,7 @@ News MCP is a backend service for aggregating, analyzing, and serving financial 
 
 ## Running the Server
 
-Start the MCP server on port 8100 using uvicorn:
+Start the MCP server on port 5101 using uvicorn:
 
 ```sh
 uvicorn src.news_mcp.server:app --host 0.0.0.0 --port 5101 --reload
