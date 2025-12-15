@@ -13,9 +13,9 @@
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-chart-financial": "^0.2.1",
     "next": "15.5.3",
-    "react": "19.1.0",
+    "react": "^19.1.0",
     "react-chartjs-2": "^5.2.0",
-    "react-dom": "19.1.0"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -33,7 +33,9 @@
   },
   "overrides": {
     "lightningcss": "1.25.1",
-    "esbuild": "0.21.5"
+    "esbuild": "0.21.5",
+    "react": "$react",
+    "react-dom": "$react-dom"
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "0.21.5",
