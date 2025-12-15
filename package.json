@@ -9,5 +9,8 @@
     "build": "npm -w apps/slm-agent run build && npm -w apps/frontend run build",
     "dev:frontend": "npm -w apps/frontend run dev",
     "dev:agent": "npm -w apps/slm-agent run dev"
+  },
+  "dependencies": {
+    "next": "^16.0.10"
   }
 }
